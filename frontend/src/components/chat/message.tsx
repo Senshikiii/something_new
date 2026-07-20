@@ -96,6 +96,8 @@ const markdownComponents: Components = {
   },
 };
 
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
 interface MessageProps {
   role: "user" | "assistant" | "tool";
   content: string;
@@ -106,7 +108,18 @@ interface MessageProps {
 export function TerminalMessage({ role, content, tool_calls, isStreaming }: MessageProps) {
   const isUser = role === "user";
 
-  const borderColor = isUser ? "border-l-green" : "border-l-primary";
+  let isPdfResult = false;
+  let pdfId = "";
+  let pdfTitle = "";
+  try {
+    const parsed = JSON.parse(content);
+    if (parsed && parsed.status === "ready" && parsed.pdf_id) {
+      isPdfResult = true;
+      pdfId = parsed.pdf_id;
+      pdfTitle = parsed.title || "Report";
+    }
+  } catch {}
+
   const prefixColor = isUser ? "text-green" : "text-primary";
 
   if (role === "tool" || (tool_calls && tool_calls.length > 0)) {
@@ -130,11 +143,26 @@ export function TerminalMessage({ role, content, tool_calls, isStreaming }: Mess
               <div key={i} className="rounded border border-border/60 bg-muted/30 px-3 py-2">
                 <div className="flex items-center gap-2 text-xs">
                   <span className="text-yellow font-medium">{toolName}</span>
-                  {argsStr && (
-                    <span className="text-muted-foreground truncate">{argsStr}</span>
+                  {toolName === "generate_pdf" && argsStr ? (
+                    <span className="text-muted-foreground truncate">Generate PDF report</span>
+                  ) : (
+                    argsStr && <span className="text-muted-foreground truncate">{argsStr}</span>
                   )}
                 </div>
-                {content && (
+                {content && isPdfResult && (
+                  <div className="mt-2">
+                    <a
+                      href={`${BACKEND}/api/chat/pdf/${pdfId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs text-primary hover:bg-primary/20 transition-colors"
+                    >
+                      <span>↓</span>
+                      <span>Download PDF — {pdfTitle}</span>
+                    </a>
+                  </div>
+                )}
+                {content && !isPdfResult && (
                   <div className="mt-1 text-xs text-muted-foreground message-content [&_pre]:mt-1 [&_pre]:mb-0 [&_pre]:text-xs [&_pre]:p-2">
                     <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                       {content}

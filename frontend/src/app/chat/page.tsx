@@ -114,7 +114,6 @@ export default function ChatPage() {
         const thread = await createThread();
         setThreadId(thread.id);
         window.history.replaceState(null, "", `/chat?thread_id=${thread.id}`);
-        setCreditBalance((c) => c - 1);
       } catch (e: any) {
         setMessages([{ role: "assistant", content: `Failed to create thread: ${e.message}` }]);
       }
@@ -185,7 +184,19 @@ export default function ChatPage() {
         setStreaming(false);
         setThinkingIteration(undefined);
         streamMsgRef.current = null;
-        setCreditBalance((c) => Math.max(0, c - 1));
+        // Refetch balance instead of assuming deduction
+        (async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user?.id) {
+            try {
+              const res = await fetch(
+                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/credits/balance/${session.user.id}`
+              );
+              const data = await res.json();
+              setCreditBalance(data.credits ?? 0);
+            } catch {}
+          }
+        })();
         scrollToBottom();
       },
       (err) => {

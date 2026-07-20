@@ -2,13 +2,14 @@ import json
 from typing import AsyncGenerator
 
 from app.chat.llm import call_llm
-from app.chat.tools import web_search, WEB_SEARCH_SCHEMA
+from app.chat.tools import web_search, generate_pdf, WEB_SEARCH_SCHEMA, GENERATE_PDF_SCHEMA
 
-TOOLS = [WEB_SEARCH_SCHEMA]
+TOOLS = [WEB_SEARCH_SCHEMA, GENERATE_PDF_SCHEMA]
 MAX_ITERATIONS = 10
 
 TOOL_MAP = {
     "web_search": web_search,
+    "generate_pdf": generate_pdf,
 }
 
 
