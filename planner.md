@@ -23,14 +23,14 @@ OpenCode wrote.
 ---
 
 ## 1. Auth + Paywall
-- [ ] Supabase project set up, Postgres schema started
+- [x] Supabase project set up, Postgres schema started (code scaffolded, SQL not yet applied)
 - [ ] Social login only — GitHub OAuth via Supabase Auth
 - [ ] Social login — Google OAuth via Supabase Auth
-- [ ] New user lands on paywall screen after first login, before any chat access
-- [ ] Coupon path: hardcoded code `SID_DRDROID` bypasses paywall instantly
-- [ ] Payment path: Stripe test-mode checkout, real card form (test card numbers)
-- [ ] Both paths grant exactly 5 credits on success
-- [ ] Credits stored per user in DB, decrement logic wired (even if usage deduction comes later)
+- [x] New user lands on paywall screen after first login, before any chat access
+- [x] Coupon path: hardcoded code `SID_DRDROID` bypasses paywall instantly
+- [x] Payment path: Stripe test-mode checkout, real card form (test card numbers)
+- [x] Both paths grant exactly 5 credits on success
+- [x] Credits stored per user in DB, decrement logic wired (even if usage deduction comes later)
 
 ## 2. Chat Interface + Agent Loop
 - [ ] Web UI: chat window, message history, input box
@@ -66,3 +66,8 @@ OpenCode wrote.
 - [ ] Friend-tested full flow end to end before sending
 - [ ] Signup URL sent to Siddarth via email
 - [ ] Stretch goal: fully working Stripe card-add-and-approve flow (the "great outcome" bar)
+
+
+
+
+
