@@ -14,7 +14,7 @@ Deep research AI agent with usage-based billing. Assignment for Dr Droid
 (Product Engineer role — https://www.ycombinator.com/companies/drdroid).
 
 Stack: Next.js (Vercel) + FastAPI (Railway) + Supabase (auth/DB) + Stripe
-(test mode) + Brave Search/SerpAPI (agent's web tool).
+(test mode) + DuckDuckGo (agent's web tool, no API key needed).
 
 Rule: after each subsystem below is working, stop and explain it back
 before moving to the next — own every decision, don't just ship what
@@ -40,11 +40,13 @@ OpenCode wrote.
 - [x] Tool: web search (DuckDuckGo — no API key needed)
 - [x] Loop termination: max iteration cap (10), handles no-more-tool-calls-needed case
 - [x] Failure handling: malformed tool call / tool failure fed back to model instead of crashing
+- [x] UI overhaul: markdown rendering, code syntax highlighting, animated typing indicator, multi-line input, terminal aesthetic (#55b8c74)
+- [x] Credit deduction moved to after successful agent completion (no charge on LLM failure)
 
 ## 3. PDF Artifact Generation
-- [ ] Agent can decide, mid-conversation, that a PDF report is the right output for a research task
-- [ ] PDF generation triggered as a distinct tool/action, separate from normal chat replies
-- [ ] Generated PDF is downloadable/viewable from the chat UI
+- [x] Agent can decide, mid-conversation, that a PDF report is the right output for a research task
+- [x] PDF generation triggered as a distinct tool/action, separate from normal chat replies
+- [x] Generated PDF is downloadable/viewable from the chat UI
 
 ## 4. Multi-Model Support (BYO Key)
 - [ ] User can input their own API key (OpenAI-compatible endpoint)
