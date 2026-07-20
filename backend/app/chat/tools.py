@@ -1,5 +1,4 @@
-import httpx
-from app.config import settings
+from duckduckgo_search import DDGS
 
 
 WEB_SEARCH_SCHEMA = {
@@ -27,34 +26,20 @@ WEB_SEARCH_SCHEMA = {
 
 
 async def web_search(query: str, count: int = 5) -> str:
-    api_key = settings.brave_api_key
-    if not api_key:
-        return "Error: Brave Search API key not configured. Set BRAVE_API_KEY in backend .env"
-
-    url = "https://api.search.brave.com/res/v1/web/search"
-    headers = {
-        "Accept": "application/json",
-        "Accept-Encoding": "gzip",
-        "X-Subscription-Token": api_key,
-    }
-    params = {
-        "q": query,
-        "count": min(count, 10),
-    }
-
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(url, headers=headers, params=params, timeout=15)
-        resp.raise_for_status()
-        data = resp.json()
-
-    results = []
-    for item in data.get("web", {}).get("results", []):
-        title = item.get("title", "")
-        snippet = item.get("description", "")
-        url_result = item.get("url", "")
-        results.append(f"• [{title}]({url_result})\n  {snippet}")
+    try:
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=min(count, 10)))
+    except Exception as e:
+        return f"Search failed: {e}"
 
     if not results:
         return f"No results found for '{query}'."
 
-    return f"Search results for '{query}':\n\n" + "\n\n".join(results)
+    lines = []
+    for item in results:
+        title = item.get("title", "")
+        snippet = item.get("body", "")
+        url = item.get("href", "")
+        lines.append(f"• [{title}]({url})\n  {snippet}")
+
+    return f"Search results for '{query}':\n\n" + "\n\n".join(lines)

@@ -10,7 +10,7 @@ MicroManus — a deep research AI agent web app with usage-based billing. Curren
 - **Backend:** FastAPI (deploy to Railway)
 - **Auth/DB:** Supabase (Postgres + Auth)
 - **Payments:** Stripe test mode + coupon code `SID_DRDROID`
-- **Agent tools:** Brave Search API or SerpAPI for web search
+- **Agent tools:** DuckDuckGo (free, no API key) for web search
 - **LLMs:** BYO API key — user supplies keys for OpenAI, Claude, Kimi (Moonshot)
 
 ## Architecture notes (from roadmap)

@@ -37,7 +37,7 @@ OpenCode wrote.
 - [x] "New chat" creates a new conversation thread
 - [x] Each thread holds its own message history/context — no bleed between threads
 - [x] Backend: hand-built agent loop (no framework) — think → tool call → observe → repeat
-- [x] Tool: web search (Brave Search API, coded but needs BRAVE_API_KEY to test)
+- [x] Tool: web search (DuckDuckGo — no API key needed)
 - [x] Loop termination: max iteration cap (10), handles no-more-tool-calls-needed case
 - [x] Failure handling: malformed tool call / tool failure fed back to model instead of crashing
 
