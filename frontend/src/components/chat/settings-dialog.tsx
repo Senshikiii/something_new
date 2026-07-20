@@ -17,6 +17,7 @@ import { getSettings, saveSettings } from "@/lib/chat";
 
 const PROVIDERS = [
   { label: "OpenAI", baseUrl: "https://api.openai.com/v1", model: "gpt-4o" },
+  { label: "Google (Gemini)", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/", model: "gemini-2.0-flash" },
   { label: "Anthropic (Claude)", baseUrl: "https://api.anthropic.com/v1", model: "claude-sonnet-4-20250514" },
   { label: "Kimi (Moonshot)", baseUrl: "https://api.moonshot.cn/v1", model: "kimi-k3" },
 ];

@@ -1,13 +1,12 @@
+import { supabase } from "./supabase";
+
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
-function getUserId(): string {
-  if (typeof window === "undefined") return "";
-  let id = localStorage.getItem("micromanus_user_id");
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem("micromanus_user_id", id);
-  }
-  return id;
+async function getUserId(): Promise<string> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session?.user?.id || "";
 }
 
 export function getSettings() {
@@ -28,16 +27,22 @@ export function saveSettings(apiKey: string, baseUrl: string, model: string) {
 }
 
 export async function listThreads(): Promise<any[]> {
-  const res = await fetch(`${BACKEND}/api/chat/threads?user_id=${getUserId()}`);
+  const userId = await getUserId();
+  const res = await fetch(`${BACKEND}/api/chat/threads?user_id=${userId}`);
   return res.json();
 }
 
 export async function createThread(): Promise<any> {
+  const userId = await getUserId();
   const res = await fetch(`${BACKEND}/api/chat/threads`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_id: getUserId() }),
+    body: JSON.stringify({ user_id: userId }),
   });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || err.detail || "Failed to create thread");
+  }
   return res.json();
 }
 
@@ -53,13 +58,13 @@ export async function sendMessage(
   onDone: () => void,
   onError: (err: string) => void,
 ) {
-  const settings = getSettings();
+  const [settings, userId] = await Promise.all([getSettings(), getUserId()]);
   const res = await fetch(`${BACKEND}/api/chat/send`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       thread_id: threadId,
-      user_id: getUserId(),
+      user_id: userId,
       content,
       api_key: settings.apiKey,
       base_url: settings.baseUrl,
@@ -82,29 +87,34 @@ export async function sendMessage(
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
 
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
 
-    let eventType = "";
-    for (const line of lines) {
-      if (line.startsWith("event: ")) {
-        eventType = line.slice(7).trim();
-      } else if (line.startsWith("data: ")) {
-        try {
-          const data = JSON.parse(line.slice(6));
-          data.type = eventType || data.type;
-          onEvent(data);
-        } catch {
-          // ignore parse errors
+      let eventType = "";
+      for (const line of lines) {
+        if (line.startsWith("event: ")) {
+          eventType = line.slice(7).trim();
+        } else if (line.startsWith("data: ")) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            data.type = eventType || data.type;
+            onEvent(data);
+          } catch {
+            // ignore parse errors
+          }
+          eventType = "";
         }
-        eventType = "";
       }
     }
+  } catch (e: any) {
+    onError(e.message || "Connection lost");
+    return;
   }
 
   onDone();

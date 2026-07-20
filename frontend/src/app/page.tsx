@@ -4,17 +4,68 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
 export default function Home() {
   const [phase, setPhase] = useState<"landing" | "login" | "paywall">("landing");
   const [coupon, setCoupon] = useState("");
-  const [credits] = useState(0);
+  const [credits, setCredits] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [cursor, setCursor] = useState(true);
 
   useEffect(() => {
     const t = setInterval(() => setCursor((c) => !c), 530);
     return () => clearInterval(t);
   }, []);
+
+  async function handleGuestSignIn() {
+    setLoading(true);
+    setError("");
+    const { data, error: signInError } = await supabase.auth.signInAnonymously();
+    setLoading(false);
+    if (signInError) {
+      setError(signInError.message);
+      return;
+    }
+    setPhase("paywall");
+  }
+
+  async function handleRedeemCoupon() {
+    if (!coupon.trim()) return;
+    setLoading(true);
+    setError("");
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.user?.id) {
+      setError("Not signed in");
+      setLoading(false);
+      return;
+    }
+    try {
+      const res = await fetch(`${BACKEND}/api/paywall/redeem-coupon`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: session.user.id, code: coupon.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.detail || "Invalid coupon");
+        setLoading(false);
+        return;
+      }
+      setCredits(data.credits);
+      setTimeout(() => {
+        window.location.href = "/chat";
+      }, 800);
+    } catch {
+      setError("Failed to connect to server");
+      setLoading(false);
+    }
+  }
 
   if (phase === "paywall") {
     return (
@@ -35,6 +86,12 @@ export default function Home() {
               <span className="font-bold text-foreground">{credits}</span>
             </div>
 
+            {error && (
+              <div className="rounded border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+                {error}
+              </div>
+            )}
+
             <div className="space-y-2">
               <label className="text-xs text-muted-foreground">enter coupon code</label>
               <div className="flex gap-2">
@@ -49,13 +106,10 @@ export default function Home() {
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => {
-                  if (coupon === "SID_DRDROID") {
-                    alert("Coupon accepted! 5 credits granted.");
-                  }
-                }}
+                disabled={loading}
+                onClick={handleRedeemCoupon}
               >
-                redeem coupon
+                {loading ? "redeeming..." : "redeem coupon"}
               </Button>
             </div>
 
@@ -68,7 +122,7 @@ export default function Home() {
               </div>
             </div>
 
-            <Button variant="default" className="w-full">
+            <Button variant="default" className="w-full" disabled>
               pay with card — $5.00
             </Button>
 
@@ -103,11 +157,18 @@ export default function Home() {
           <Button
             variant="outline"
             className="w-full justify-start gap-3 font-normal"
-            onClick={() => (window.location.href = "/chat")}
+            disabled={loading}
+            onClick={handleGuestSignIn}
           >
             <span className="text-muted-foreground">{">"}</span>
-            continue as guest (dev)
+            {loading ? "signing in..." : "continue as guest (dev)"}
           </Button>
+
+          {error && (
+            <div className="rounded border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+              {error}
+            </div>
+          )}
         </div>
 
         <p className="text-xs text-muted-foreground text-center leading-relaxed">
