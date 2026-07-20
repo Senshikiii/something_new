@@ -33,13 +33,13 @@ OpenCode wrote.
 - [x] Credits stored per user in DB, decrement logic wired (even if usage deduction comes later)
 
 ## 2. Chat Interface + Agent Loop
-- [ ] Web UI: chat window, message history, input box
-- [ ] "New chat" creates a new conversation thread
-- [ ] Each thread holds its own message history/context — no bleed between threads
-- [ ] Backend: hand-built agent loop (no framework) — think → tool call → observe → repeat
-- [ ] Tool: web search (Brave Search API or SerpAPI, free tier)
-- [ ] Loop termination: max iteration cap, handles no-more-tool-calls-needed case
-- [ ] Failure handling: malformed tool call, tool failure fed back to model instead of crashing
+- [x] Web UI: chat window, message history, input box
+- [x] "New chat" creates a new conversation thread
+- [x] Each thread holds its own message history/context — no bleed between threads
+- [x] Backend: hand-built agent loop (no framework) — think → tool call → observe → repeat
+- [x] Tool: web search (Brave Search API, coded but needs BRAVE_API_KEY to test)
+- [x] Loop termination: max iteration cap (10), handles no-more-tool-calls-needed case
+- [x] Failure handling: malformed tool call / tool failure fed back to model instead of crashing
 
 ## 3. PDF Artifact Generation
 - [ ] Agent can decide, mid-conversation, that a PDF report is the right output for a research task
