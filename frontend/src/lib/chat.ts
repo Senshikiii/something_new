@@ -2,11 +2,17 @@ import { supabase } from "./supabase";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
-async function getUserId(): Promise<string> {
+async function authHeaders(): Promise<Record<string, string>> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
-  return session?.user?.id || "";
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (session?.access_token) {
+    headers["Authorization"] = `Bearer ${session.access_token}`;
+  }
+  return headers;
 }
 
 export function getSettings() {
@@ -26,18 +32,12 @@ export function saveSettings(apiKey: string, baseUrl: string, model: string) {
   localStorage.setItem("micromanus_model", model);
 }
 
-export async function listThreads(): Promise<any[]> {
-  const userId = await getUserId();
-  const res = await fetch(`${BACKEND}/api/chat/threads?user_id=${userId}`);
-  return res.json();
-}
-
 export async function createThread(): Promise<any> {
-  const userId = await getUserId();
+  const headers = await authHeaders();
   const res = await fetch(`${BACKEND}/api/chat/threads`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_id: userId }),
+    headers,
+    body: JSON.stringify({}),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -47,7 +47,14 @@ export async function createThread(): Promise<any> {
 }
 
 export async function loadMessages(threadId: string): Promise<any[]> {
-  const res = await fetch(`${BACKEND}/api/chat/threads/${threadId}/messages`);
+  const headers = await authHeaders();
+  const res = await fetch(`${BACKEND}/api/chat/threads/${threadId}/messages`, {
+    headers,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to load messages");
+  }
   return res.json();
 }
 
@@ -58,13 +65,12 @@ export async function sendMessage(
   onDone: () => void,
   onError: (err: string) => void,
 ) {
-  const [settings, userId] = await Promise.all([getSettings(), getUserId()]);
+  const [settings, headers] = await Promise.all([getSettings(), authHeaders()]);
   const res = await fetch(`${BACKEND}/api/chat/send`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify({
       thread_id: threadId,
-      user_id: userId,
       content,
       api_key: settings.apiKey,
       base_url: settings.baseUrl,

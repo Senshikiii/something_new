@@ -1,10 +1,11 @@
-import json
+import copy
 import json
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
 
+from app.auth.deps import get_current_user
 from app.auth.supabase import get_supabase
 from app.chat.agent import run_agent
 from app.chat.pdf import generate_pdf_report
@@ -15,12 +16,11 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 
 class CreateThread(BaseModel):
-    user_id: str
+    pass
 
 
 class SendMessage(BaseModel):
     thread_id: str
-    user_id: str
     content: str
     api_key: str
     base_url: str = "https://api.openai.com/v1"
@@ -35,12 +35,12 @@ class ThreadOut(BaseModel):
 
 
 @router.get("/threads")
-async def list_threads(user_id: str) -> list[ThreadOut]:
+async def list_threads(current_user: str = Depends(get_current_user)) -> list[ThreadOut]:
     supabase = get_supabase()
     result = (
         supabase.table("threads")
         .select("id, title, created_at, updated_at")
-        .eq("user_id", user_id)
+        .eq("user_id", current_user)
         .order("updated_at", desc=True)
         .execute()
     )
@@ -48,11 +48,14 @@ async def list_threads(user_id: str) -> list[ThreadOut]:
 
 
 @router.post("/threads")
-async def create_thread(body: CreateThread) -> ThreadOut:
+async def create_thread(
+    body: CreateThread,
+    current_user: str = Depends(get_current_user),
+) -> ThreadOut:
     supabase = get_supabase()
     result = (
         supabase.table("threads")
-        .insert({"user_id": body.user_id})
+        .insert({"user_id": current_user})
         .execute()
     )
     row = result.data[0]
@@ -60,8 +63,14 @@ async def create_thread(body: CreateThread) -> ThreadOut:
 
 
 @router.get("/threads/{thread_id}/messages")
-async def list_messages(thread_id: str):
+async def list_messages(
+    thread_id: str,
+    current_user: str = Depends(get_current_user),
+):
     supabase = get_supabase()
+    thread = supabase.table("threads").select("user_id").eq("id", thread_id).single().execute()
+    if not thread.data or thread.data["user_id"] != current_user:
+        raise HTTPException(status_code=404, detail="Thread not found")
     result = (
         supabase.table("messages")
         .select("*")
@@ -73,10 +82,13 @@ async def list_messages(thread_id: str):
 
 
 @router.post("/send")
-async def send_message(body: SendMessage):
+async def send_message(
+    body: SendMessage,
+    current_user: str = Depends(get_current_user),
+):
     supabase = get_supabase()
 
-    profile = supabase.table("profiles").select("credits").eq("id", body.user_id).single().execute()
+    profile = supabase.table("profiles").select("credits").eq("id", current_user).single().execute()
     if not profile.data or profile.data["credits"] < 1:
         raise HTTPException(status_code=402, detail="Insufficient credits.")
 
@@ -133,7 +145,6 @@ async def send_message(body: SendMessage):
                         "content": event.get("content", ""),
                     }
                     if event["role"] == "assistant" and "tool_calls" in event:
-                        import copy
                         row["tool_calls"] = copy.deepcopy(event["tool_calls"])
                     if event["role"] == "tool" and "tool_call_id" in event:
                         row["tool_call_id"] = event["tool_call_id"]
@@ -142,8 +153,7 @@ async def send_message(body: SendMessage):
 
                 yield f"event: {event['type']}\ndata: {json.dumps(event)}\n\n"
 
-            # Only deduct credit on successful completion
-            supabase.rpc("use_credit", {"p_user_id": body.user_id}).execute()
+            supabase.rpc("use_credit", {"p_user_id": current_user}).execute()
             yield "event: done\ndata: {}\n\n"
         except Exception as e:
             yield f"event: error\ndata: {json.dumps({'text': str(e)})}\n\n"

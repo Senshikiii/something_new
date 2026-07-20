@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_anon_key: str = ""
     supabase_service_key: str = ""
+    supabase_jwt_secret: str = ""
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     cors_origins: str = "http://localhost:3000"

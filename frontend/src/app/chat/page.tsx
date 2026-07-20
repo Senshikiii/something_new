@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { SettingsDialog } from "@/components/chat/settings-dialog";
 import { TerminalMessage } from "@/components/chat/message";
 import { TypingIndicator } from "@/components/chat/typing-indicator";
+import { PixelCat, PixelWhale, PixelStar, WalkingCat } from "@/components/chat/pixel-art";
 import { supabase } from "@/lib/supabase";
 import { createThread, loadMessages, sendMessage, getSettings } from "@/lib/chat";
 
@@ -23,6 +24,7 @@ interface StreamMsg {
 }
 
 export default function ChatPage() {
+  const [initializing, setInitializing] = useState(true);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -40,7 +42,6 @@ export default function ChatPage() {
     }, 50);
   }, []);
 
-  // Init: create or load thread
   useEffect(() => {
     const init = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -54,8 +55,12 @@ export default function ChatPage() {
       const tid = params.get("thread_id");
       if (tid) {
         setThreadId(tid);
-        const msgs = await loadMessages(tid);
-        setMessages(msgs);
+        try {
+          const msgs = await loadMessages(tid);
+          setMessages(msgs);
+        } catch (e: any) {
+          setMessages([{ role: "assistant", content: `Failed to load messages: ${e.message}` }]);
+        }
       } else {
         try {
           const thread = await createThread();
@@ -65,38 +70,25 @@ export default function ChatPage() {
           setMessages([{ role: "assistant", content: `Failed to create thread: ${e.message}` }]);
         }
       }
+      if (session.access_token) {
+        try {
+          const res = await fetch(
+            `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/credits/balance`,
+            { headers: { Authorization: `Bearer ${session.access_token}` } }
+          );
+          const data = await res.json();
+          setCreditBalance(data.credits ?? 0);
+        } catch {}
+      }
+      setInitializing(false);
     };
     init();
   }, []);
-
-  // Check credits on thread change
-  useEffect(() => {
-    if (!threadId) return;
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
-      if (!userId) return;
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/credits/balance/${userId}`
-        );
-        const data = await res.json();
-        setCreditBalance(data.credits ?? 0);
-      } catch {}
-    })();
-  }, [threadId]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // Update model name on settings change
-  useEffect(() => {
-    const s = getSettings();
-    setModelName(s.model);
-  }, []);
-
-  // Auto-resize textarea
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.style.height = "auto";
@@ -190,10 +182,11 @@ export default function ChatPage() {
         streamMsgRef.current = null;
         (async () => {
           const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user?.id) {
+          if (session?.access_token) {
             try {
               const res = await fetch(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/credits/balance/${session.user.id}`
+                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/credits/balance`,
+                { headers: { Authorization: `Bearer ${session.access_token}` } }
               );
               const data = await res.json();
               setCreditBalance(data.credits ?? 0);
@@ -218,43 +211,71 @@ export default function ChatPage() {
     }
   }
 
+  if (initializing) {
+    return (
+      <div className="flex flex-1 items-center justify-center bg-[#1d2021]">
+        <div className="text-xs text-[#504945] animate-pulse">loading...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-1 flex-col items-center justify-center p-3 sm:p-4">
-      <div className="w-full max-w-4xl h-full flex flex-col rounded-lg border border-border/80 bg-background shadow-lg overflow-hidden">
-        {/* Terminal Title Bar */}
-        <div className="flex items-center gap-2 border-b border-border/80 bg-card/50 px-3 py-2.5 select-none">
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-red-500/80 hover:bg-red-500 transition-colors cursor-pointer" onClick={handleLogout} title="Logout" />
-            <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-            <div className="w-3 h-3 rounded-full bg-green-500/80" />
+    <div className="flex flex-1 flex-col items-center justify-center p-2 sm:p-3 relative">
+      {/* Background decorations */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute animate-[float-drift_8s_ease-in-out_infinite]" style={{ top: "12%", left: "5%", opacity: 0.15 }}>
+          <PixelCat color="#d79921" size={4} />
+        </div>
+        <div className="absolute animate-[float-drift-slow_12s_ease-in-out_infinite]" style={{ top: "60%", right: "6%", opacity: 0.12 }}>
+          <PixelWhale color="#458588" size={4} />
+        </div>
+        <div className="absolute animate-[float-drift_10s_ease-in-out_infinite_reverse]" style={{ top: "30%", right: "15%", opacity: 0.08 }}>
+          <PixelCat color="#98971a" size={3} />
+        </div>
+        <div className="absolute animate-[float-drift-slow_15s_ease-in-out_infinite]" style={{ bottom: "20%", left: "10%", opacity: 0.1 }}>
+          <PixelWhale color="#b16286" size={3} />
+        </div>
+        <div className="absolute animate-[float-drift_14s_ease-in-out_infinite]" style={{ top: "45%", left: "50%", opacity: 0.06 }}>
+          <PixelStar color="#d65d0e" size={3} />
+        </div>
+        <div className="absolute animate-[float-drift_9s_ease-in-out_infinite_reverse]" style={{ top: "75%", right: "25%", opacity: 0.05 }}>
+          <PixelStar color="#fabd2f" size={2} />
+        </div>
+        <WalkingCat className="fixed bottom-0 left-0 z-0" />
+      </div>
+
+      <div className="w-full max-w-4xl h-full flex flex-col border-2 border-border/80 bg-background shadow-[8px_8px_0px_rgba(29,32,33,0.8)] z-10">
+        {/* Retro terminal title bar */}
+        <div className="flex items-center border-b-2 border-border/80 bg-[#3c3836] px-3 py-1.5 select-none">
+          <div className="flex items-center gap-2 text-xs text-[#928374] font-bold tracking-wide">
+            <PixelCat color="#d79921" size={2} />
+            <span>MICROMANUS</span>
+            <span className="text-[#504945]">|</span>
+            <span className="font-normal text-[#928374]">~/chat</span>
           </div>
-          <div className="flex-1 text-center">
-            <span className="text-xs text-muted-foreground/60 font-medium tracking-wide">
-              micromanus — ~/chat
-            </span>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground/40">
-            <span className="hidden sm:inline">{creditBalance} credits</span>
-            <span className="hidden sm:inline mx-1">|</span>
-            <span className="hidden sm:inline truncate max-w-24">{modelName}</span>
-          </div>
+          <div className="flex-1" />
+          <button
+            onClick={handleLogout}
+            className="text-[#928374] hover:text-[#cc241d] text-xs transition-colors tracking-wide"
+          >
+            [exit]
+          </button>
         </div>
 
         {/* Toolbar */}
-        <div className="flex items-center justify-between border-b border-border/40 px-3 py-1.5 bg-muted/10">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground/50">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-green" />
-            <span className="hidden sm:inline">{creditBalance} credits</span>
+        <div className="flex items-center justify-between border-b border-border/40 px-3 py-1 bg-[#32302f]">
+          <div className="flex items-center gap-2 text-xs text-[#928374]">
+            <span className="text-[#98971a]">{creditBalance}c</span>
             {modelName && (
               <>
-                <span className="hidden sm:inline">|</span>
-                <span className="hidden sm:inline">{modelName}</span>
+                <span className="text-[#504945]">|</span>
+                <span className="truncate max-w-24">{modelName}</span>
               </>
             )}
             {threadId && (
               <>
-                <span>|</span>
-                <span className="truncate max-w-32">{threadId.slice(0, 8)}</span>
+                <span className="text-[#504945]">|</span>
+                <span className="text-[#504945]">#{threadId.slice(0, 6)}</span>
               </>
             )}
           </div>
@@ -266,33 +287,27 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* Messages area */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-muted/5">
+        {/* Messages */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-[#1d2021]">
           <div className="mx-auto max-w-3xl px-3 sm:px-4 py-5 space-y-3">
             {messages.length === 0 && !streaming && (
               <div className="animate-fade-in flex flex-col items-center justify-center py-20 text-center">
-                <pre className="text-xs text-muted-foreground/20 select-none mb-6 leading-relaxed">
+                <pre className="text-xs text-[#504945] select-none mb-6 leading-relaxed">
 {`  __  __ _                _____                _
  |  \\/  (_) ___ ___ ___  |  ___|__ _ __  _   _| |_ ___
  | |\\/| | |/ __/ __/ __| | |_ / _ \\ '_ \\| | | | __/ _ \\
  | |  | | | (__|__ \\__ \\ |  _|  __/ | | | |_| | |_  __/
  |_|  |_|_|\\___|___/___/ |_|  \\___|_| |_|\\__,_|\\__\\___|`}
                 </pre>
-                <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground/40">
-                    research agent ready —
-                  </p>
-                  <p className="text-xs text-muted-foreground/30">
-                    set your API key in settings, then ask anything
-                  </p>
+                <div className="space-y-1">
+                  <p className="text-xs text-[#928374]">research agent ready —</p>
+                  <p className="text-xs text-[#504945]">set API key in settings, then ask anything</p>
                 </div>
               </div>
             )}
 
             {messages.map((msg, i) => {
-              if (msg.role === "tool") {
-                return null;
-              }
+              if (msg.role === "tool") return null;
               return (
                 <TerminalMessage
                   key={msg.id || i}
@@ -310,11 +325,11 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* Input area */}
-        <div className="border-t border-border/60 bg-card/30">
+        {/* Input */}
+        <div className="border-t-2 border-border/60 bg-[#32302f]">
           <div className="mx-auto max-w-3xl px-3 sm:px-4 py-3">
-            <div className="relative flex items-start gap-3 rounded-lg border border-border bg-muted/10 px-3 py-2 transition-all duration-200 focus-within:border-primary/30 focus-within:bg-muted/20 focus-within:shadow-[0_0_0_3px_rgba(180,190,254,0.06)]">
-              <span className="text-green shrink-0 mt-1.5 text-sm select-none">$</span>
+            <div className="flex items-start gap-2 border-2 border-border bg-[#1d2021] px-3 py-2 transition-colors duration-200 focus-within:border-[#458588]">
+              <span className="text-[#98971a] shrink-0 mt-1.5 text-sm select-none">$</span>
               <textarea
                 ref={inputRef}
                 value={input}
@@ -323,17 +338,18 @@ export default function ChatPage() {
                 placeholder={streaming ? "agent is thinking..." : "ask anything..."}
                 disabled={streaming}
                 rows={1}
-                className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/30 font-mono resize-none leading-relaxed"
+                className="flex-1 bg-transparent border-none outline-none text-sm text-[#ebdbb2] placeholder:text-[#504945] font-mono resize-none leading-relaxed"
                 autoFocus
               />
             </div>
             <div className="flex items-center justify-between mt-1.5 px-1">
-              <span className="text-[10px] text-muted-foreground/25">
-                Enter to send · Shift+Enter for newline
-              </span>
-              <span className="text-[10px] text-muted-foreground/25">
-                {input.length > 0 ? `${input.length} chars` : ""}
-              </span>
+              <span className="text-[10px] text-[#504945]">RET to send · ^J newline</span>
+              <button
+                onClick={handleLogout}
+                className="text-[10px] text-[#504945] hover:text-[#cc241d] transition-colors"
+              >
+                logout
+              </button>
             </div>
           </div>
         </div>
