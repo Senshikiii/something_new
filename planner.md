@@ -23,7 +23,7 @@ OpenCode wrote.
 ---
 
 ## 1. Auth + Paywall
-- [x] Supabase project set up, Postgres schema started (code scaffolded, SQL not yet applied)
+- [x] Supabase project set up, Postgres schema started (SQL applied + security hardened)
 - [ ] Social login only — GitHub OAuth via Supabase Auth
 - [ ] Social login — Google OAuth via Supabase Auth
 - [x] New user lands on paywall screen after first login, before any chat access
