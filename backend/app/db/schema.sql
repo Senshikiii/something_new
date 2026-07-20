@@ -92,3 +92,47 @@ DROP POLICY IF EXISTS "Users can view own transactions" ON credits_transactions;
 CREATE POLICY "Users can view own transactions"
     ON credits_transactions FOR SELECT
     USING (auth.uid() = user_id);
+
+-- Chat threads
+CREATE TABLE IF NOT EXISTS threads (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    title TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_threads_user ON threads(user_id);
+
+-- Messages within a thread
+CREATE TABLE IF NOT EXISTS messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    thread_id UUID NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'tool')),
+    content TEXT NOT NULL,
+    model TEXT,
+    tool_calls JSONB,
+    tool_call_id TEXT,
+    tokens_input INTEGER,
+    tokens_output INTEGER,
+    tokens_cache INTEGER,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Add tool_call_id if upgrading from an older schema
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS tool_call_id TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_messages_thread ON messages(thread_id, created_at);
+
+ALTER TABLE threads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can manage own threads" ON threads;
+CREATE POLICY "Users can manage own threads"
+    ON threads FOR ALL
+    USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can view own messages" ON messages;
+CREATE POLICY "Users can view own messages"
+    ON messages FOR SELECT
+    USING (thread_id IN (SELECT id FROM threads WHERE user_id = auth.uid()));

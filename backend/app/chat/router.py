@@ -1,0 +1,153 @@
+import json
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+
+from app.auth.supabase import get_supabase
+from app.chat.agent import run_agent
+
+router = APIRouter(prefix="/api/chat", tags=["chat"])
+
+
+class CreateThread(BaseModel):
+    user_id: str
+
+
+class SendMessage(BaseModel):
+    thread_id: str
+    user_id: str
+    content: str
+    api_key: str
+    base_url: str = "https://api.openai.com/v1"
+    model: str = "gpt-4o"
+
+
+class ThreadOut(BaseModel):
+    id: str
+    title: str | None
+    created_at: str
+    updated_at: str
+
+
+@router.get("/threads")
+async def list_threads(user_id: str) -> list[ThreadOut]:
+    supabase = get_supabase()
+    result = (
+        supabase.table("threads")
+        .select("id, title, created_at, updated_at")
+        .eq("user_id", user_id)
+        .order("updated_at", desc=True)
+        .execute()
+    )
+    return [ThreadOut(**row) for row in result.data]
+
+
+@router.post("/threads")
+async def create_thread(body: CreateThread) -> ThreadOut:
+    supabase = get_supabase()
+    result = (
+        supabase.table("threads")
+        .insert({"user_id": body.user_id})
+        .execute()
+    )
+    row = result.data[0]
+    return ThreadOut(**row)
+
+
+@router.get("/threads/{thread_id}/messages")
+async def list_messages(thread_id: str):
+    supabase = get_supabase()
+    result = (
+        supabase.table("messages")
+        .select("*")
+        .eq("thread_id", thread_id)
+        .order("created_at")
+        .execute()
+    )
+    return result.data
+
+
+@router.post("/send")
+async def send_message(body: SendMessage):
+    supabase = get_supabase()
+
+    profile = supabase.table("profiles").select("credits").eq("id", body.user_id).single().execute()
+    if not profile.data or profile.data["credits"] < 1:
+        raise HTTPException(status_code=402, detail="Insufficient credits.")
+
+    result = supabase.rpc("use_credit", {"p_user_id": body.user_id}).execute()
+    if not result.data:
+        raise HTTPException(status_code=402, detail="Failed to deduct credit.")
+
+    supabase.table("messages").insert({
+        "thread_id": body.thread_id,
+        "role": "user",
+        "content": body.content,
+    }).execute()
+
+    existing = supabase.table("messages").select("id").eq("thread_id", body.thread_id).execute()
+    if len(existing.data) == 1:
+        title = body.content[:80] + ("..." if len(body.content) > 80 else "")
+        supabase.table("threads").update({"title": title}).eq("id", body.thread_id).execute()
+
+    history = supabase.table("messages").select("*").eq("thread_id", body.thread_id).order("created_at").execute()
+
+    messages = []
+    for msg in history.data:
+        role = msg["role"]
+        entry = {"role": role, "content": msg["content"]}
+        if role == "assistant" and msg.get("tool_calls"):
+            entry["tool_calls"] = msg["tool_calls"]
+        if role == "tool":
+            entry["tool_call_id"] = msg.get("tool_call_id", "")
+        messages.append(entry)
+
+    system_prompt = {
+        "role": "system",
+        "content": (
+            "You are a research assistant. You have access to web_search to find current information. "
+            "When asked about recent events, data, or anything requiring up-to-date knowledge, use web_search. "
+            "Present information clearly and cite your sources. "
+            "You can make multiple search calls if needed. "
+            "If a search returns no results, try reformulating your query."
+        ),
+    }
+
+    agent_messages = [system_prompt] + messages
+
+    async def event_stream():
+        try:
+            async for event in run_agent(
+                base_url=body.base_url,
+                api_key=body.api_key,
+                model=body.model,
+                messages=agent_messages,
+            ):
+                if event["type"] == "save_msg":
+                    row = {
+                        "thread_id": body.thread_id,
+                        "role": event["role"],
+                        "content": event.get("content", ""),
+                    }
+                    if event["role"] == "assistant" and "tool_calls" in event:
+                        import copy
+                        row["tool_calls"] = copy.deepcopy(event["tool_calls"])
+                    if event["role"] == "tool" and "tool_call_id" in event:
+                        row["tool_call_id"] = event["tool_call_id"]
+                    supabase.table("messages").insert(row).execute()
+                    continue
+
+                yield f"event: {event['type']}\ndata: {json.dumps(event)}\n\n"
+
+            yield "event: done\ndata: {}\n\n"
+        except Exception as e:
+            yield f"event: error\ndata: {json.dumps({'text': str(e)})}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )

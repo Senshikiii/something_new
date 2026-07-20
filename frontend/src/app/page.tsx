@@ -103,23 +103,15 @@ export default function Home() {
           <Button
             variant="outline"
             className="w-full justify-start gap-3 font-normal"
-            onClick={() => setPhase("login")}
+            onClick={() => (window.location.href = "/chat")}
           >
             <span className="text-muted-foreground">{">"}</span>
-            sign in with GitHub
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full justify-start gap-3 font-normal"
-            onClick={() => setPhase("login")}
-          >
-            <span className="text-muted-foreground">{">"}</span>
-            sign in with Google
+            continue as guest (dev)
           </Button>
         </div>
 
         <p className="text-xs text-muted-foreground text-center leading-relaxed">
-          no account? sign in above &mdash; we use Supabase Auth
+          set your API key in settings, then start chatting
         </p>
       </div>
     </div>

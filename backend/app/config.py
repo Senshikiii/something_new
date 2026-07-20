@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     stripe_secret_key: str = ""
     stripe_webhook_secret: str = ""
     cors_origins: str = "http://localhost:3000"
+    brave_api_key: str = ""
     coupon_code: str = "SID_DRDROID"
     credit_grant_amount: int = 5
 
