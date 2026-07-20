@@ -104,6 +104,11 @@ export default function ChatPage() {
     }
   }, [input]);
 
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  }
+
   function handleNewChat() {
     setMessages([]);
     setStreaming(false);
@@ -162,7 +167,6 @@ export default function ChatPage() {
           ]);
           scrollToBottom();
         } else if (event.type === "tool_result") {
-          // Show tool result in the last tool_call message
           setMessages((prev) => {
             const copy = [...prev];
             for (let i = copy.length - 1; i >= 0; i--) {
@@ -184,7 +188,6 @@ export default function ChatPage() {
         setStreaming(false);
         setThinkingIteration(undefined);
         streamMsgRef.current = null;
-        // Refetch balance instead of assuming deduction
         (async () => {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user?.id) {
@@ -216,91 +219,122 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col h-full bg-background">
-      {/* Top bar */}
-      <div className="flex items-center justify-between border-b border-border/60 px-4 py-2.5">
-        <div className="flex items-center gap-3 text-sm">
-          <span className="text-primary font-bold tracking-wide">MicroManus</span>
-          <span className="text-muted-foreground/40">|</span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-green" />
-            <span className="text-muted-foreground text-xs">{creditBalance} credits</span>
-          </span>
-          {modelName && (
-            <>
-              <span className="text-muted-foreground/40">|</span>
-              <span className="text-muted-foreground text-xs">{modelName}</span>
-            </>
-          )}
+    <div className="flex flex-1 flex-col items-center justify-center p-3 sm:p-4">
+      <div className="w-full max-w-4xl h-full flex flex-col rounded-lg border border-border/80 bg-background shadow-lg overflow-hidden">
+        {/* Terminal Title Bar */}
+        <div className="flex items-center gap-2 border-b border-border/80 bg-card/50 px-3 py-2.5 select-none">
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-red-500/80 hover:bg-red-500 transition-colors cursor-pointer" onClick={handleLogout} title="Logout" />
+            <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+            <div className="w-3 h-3 rounded-full bg-green-500/80" />
+          </div>
+          <div className="flex-1 text-center">
+            <span className="text-xs text-muted-foreground/60 font-medium tracking-wide">
+              micromanus — ~/chat
+            </span>
+          </div>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground/40">
+            <span className="hidden sm:inline">{creditBalance} credits</span>
+            <span className="hidden sm:inline mx-1">|</span>
+            <span className="hidden sm:inline truncate max-w-24">{modelName}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={handleNewChat} disabled={streaming}>
-            + new
-          </Button>
-          <SettingsDialog />
-        </div>
-      </div>
 
-      {/* Messages area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl px-4 py-6 space-y-4">
-          {messages.length === 0 && !streaming && (
-            <div className="animate-fade-in flex flex-col items-center justify-center py-16 text-center">
-              <pre className="text-xs text-muted-foreground/30 select-none mb-4 leading-relaxed">
+        {/* Toolbar */}
+        <div className="flex items-center justify-between border-b border-border/40 px-3 py-1.5 bg-muted/10">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground/50">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-green" />
+            <span className="hidden sm:inline">{creditBalance} credits</span>
+            {modelName && (
+              <>
+                <span className="hidden sm:inline">|</span>
+                <span className="hidden sm:inline">{modelName}</span>
+              </>
+            )}
+            {threadId && (
+              <>
+                <span>|</span>
+                <span className="truncate max-w-32">{threadId.slice(0, 8)}</span>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={handleNewChat} disabled={streaming}>
+              + new
+            </Button>
+            <SettingsDialog />
+          </div>
+        </div>
+
+        {/* Messages area */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-muted/5">
+          <div className="mx-auto max-w-3xl px-3 sm:px-4 py-5 space-y-3">
+            {messages.length === 0 && !streaming && (
+              <div className="animate-fade-in flex flex-col items-center justify-center py-20 text-center">
+                <pre className="text-xs text-muted-foreground/20 select-none mb-6 leading-relaxed">
 {`  __  __ _                _____                _
  |  \\/  (_) ___ ___ ___  |  ___|__ _ __  _   _| |_ ___
  | |\\/| | |/ __/ __/ __| | |_ / _ \\ '_ \\| | | | __/ _ \\
  | |  | | | (__|__ \\__ \\ |  _|  __/ | | | |_| | |_  __/
  |_|  |_|_|\\___|___/___/ |_|  \\___|_| |_|\\__,_|\\__\\___|`}
-              </pre>
-              <p className="text-xs text-muted-foreground/40">
-                ask anything — I&apos;ll search the web and research for you
-              </p>
-            </div>
-          )}
+                </pre>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground/40">
+                    research agent ready —
+                  </p>
+                  <p className="text-xs text-muted-foreground/30">
+                    set your API key in settings, then ask anything
+                  </p>
+                </div>
+              </div>
+            )}
 
-          {messages.map((msg, i) => {
-            if (msg.role === "tool") {
-              return null;
-            }
-            return (
-              <TerminalMessage
-                key={msg.id || i}
-                role={msg.role}
-                content={msg.content}
-                tool_calls={msg.tool_calls}
-                isStreaming={streaming && i === messages.length - 1 && msg.role === "assistant"}
-              />
-            );
-          })}
+            {messages.map((msg, i) => {
+              if (msg.role === "tool") {
+                return null;
+              }
+              return (
+                <TerminalMessage
+                  key={msg.id || i}
+                  role={msg.role}
+                  content={msg.content}
+                  tool_calls={msg.tool_calls}
+                  isStreaming={streaming && i === messages.length - 1 && msg.role === "assistant"}
+                />
+              );
+            })}
 
-          {streaming && !messages.some(m => m.role === "assistant" && !m.tool_calls) && (
-            <TypingIndicator iteration={thinkingIteration} />
-          )}
-        </div>
-      </div>
-
-      {/* Input area */}
-      <div className="border-t border-border/60">
-        <div className="mx-auto max-w-3xl px-4 py-3">
-          <div className="relative flex items-start gap-3 rounded-lg border border-border bg-muted/20 px-3 py-2 transition-shadow duration-200 focus-within:border-primary/40 focus-within:shadow-[0_0_0_2px_rgba(180,190,254,0.08)]">
-            <span className="text-green shrink-0 mt-1.5 text-sm">$</span>
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={streaming ? "agent is thinking..." : "ask anything..."}
-              disabled={streaming}
-              rows={1}
-              className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/40 font-mono resize-none leading-relaxed"
-              autoFocus
-            />
+            {streaming && !messages.some(m => m.role === "assistant" && !m.tool_calls) && (
+              <TypingIndicator iteration={thinkingIteration} />
+            )}
           </div>
-          <div className="flex items-center justify-between mt-1.5 px-1">
-            <span className="text-[10px] text-muted-foreground/30">
-              Enter to send · Shift+Enter for newline
-            </span>
+        </div>
+
+        {/* Input area */}
+        <div className="border-t border-border/60 bg-card/30">
+          <div className="mx-auto max-w-3xl px-3 sm:px-4 py-3">
+            <div className="relative flex items-start gap-3 rounded-lg border border-border bg-muted/10 px-3 py-2 transition-all duration-200 focus-within:border-primary/30 focus-within:bg-muted/20 focus-within:shadow-[0_0_0_3px_rgba(180,190,254,0.06)]">
+              <span className="text-green shrink-0 mt-1.5 text-sm select-none">$</span>
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={streaming ? "agent is thinking..." : "ask anything..."}
+                disabled={streaming}
+                rows={1}
+                className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/30 font-mono resize-none leading-relaxed"
+                autoFocus
+              />
+            </div>
+            <div className="flex items-center justify-between mt-1.5 px-1">
+              <span className="text-[10px] text-muted-foreground/25">
+                Enter to send · Shift+Enter for newline
+              </span>
+              <span className="text-[10px] text-muted-foreground/25">
+                {input.length > 0 ? `${input.length} chars` : ""}
+              </span>
+            </div>
           </div>
         </div>
       </div>

@@ -126,6 +126,11 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-mono);
+    background-image:
+      linear-gradient(rgba(69, 71, 90, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(69, 71, 90, 0.04) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-position: center center;
   }
   html {
     @apply font-mono;

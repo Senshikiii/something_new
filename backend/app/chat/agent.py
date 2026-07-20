@@ -40,11 +40,22 @@ async def run_agent(
 
         if not message.get("tool_calls"):
             content = message.get("content") or ""
+            usage = response.get("usage", {})
+            yield {
+                "type": "save_msg",
+                "role": "assistant",
+                "content": content,
+                "tokens_input": usage.get("prompt_tokens", 0),
+                "tokens_output": usage.get("completion_tokens", 0),
+                "tokens_cache": usage.get("cache_read_input_tokens", 0),
+                "model": model,
+            }
             yield {"type": "content", "text": content}
             yield {
                 "type": "usage",
-                "input": response["usage"]["prompt_tokens"],
-                "output": response["usage"]["completion_tokens"],
+                "input": usage.get("prompt_tokens", 0),
+                "output": usage.get("completion_tokens", 0),
+                "cache": usage.get("cache_read_input_tokens", 0),
                 "model": model,
             }
             return

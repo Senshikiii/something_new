@@ -184,19 +184,27 @@ export function TerminalMessage({ role, content, tool_calls, isStreaming }: Mess
         style={{ backgroundColor: isUser ? "rgba(166, 227, 161, 0.5)" : "rgba(180, 190, 254, 0.5)" }}
       />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-0.5">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
           <span className={prefixColor}>{isUser ? "$" : "⎔"}</span>
           <span>{isUser ? "you" : "assistant"}</span>
         </div>
-        <div className="message-content text-sm leading-relaxed text-foreground">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-            {content || (isStreaming ? "" : "")}
-          </ReactMarkdown>
-          {isStreaming && (
-            <span className="inline-flex ml-0.5">
-              <span className="w-2 h-4 bg-primary animate-pulse" />
-            </span>
-          )}
+        <div
+          className="rounded-lg px-3 py-2 border"
+          style={{
+            backgroundColor: isUser ? "rgba(166, 227, 161, 0.04)" : "rgba(180, 190, 254, 0.04)",
+            borderColor: isUser ? "rgba(166, 227, 161, 0.1)" : "rgba(180, 190, 254, 0.1)",
+          }}
+        >
+          <div className="message-content text-sm leading-relaxed text-foreground">
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              {content || (isStreaming ? "" : "")}
+            </ReactMarkdown>
+            {isStreaming && (
+              <span className="inline-flex ml-0.5">
+                <span className="w-2 h-4 bg-primary animate-pulse" />
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>
