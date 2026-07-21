@@ -7,8 +7,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { PixelCat, PixelWhale } from "@/components/chat/pixel-art";
 import { BootSequence } from "@/components/chat/boot-sequence";
-
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+import { BACKEND_URL } from "@/lib/config";
 
 export default function Home() {
   const [bootComplete, setBootComplete] = useState(false);
@@ -49,7 +48,7 @@ export default function Home() {
       return;
     }
     try {
-      const res = await fetch(`${BACKEND}/api/paywall/redeem-coupon`, {
+      const res = await fetch(`${BACKEND_URL}/api/paywall/redeem-coupon`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -92,7 +91,7 @@ export default function Home() {
     {
       label: "Connecting to research backend",
       action: async () => {
-        const res = await fetch(`${BACKEND}/api/health`);
+        const res = await fetch(`${BACKEND_URL}/api/health`);
         const data = await res.json();
         return data.status;
       },

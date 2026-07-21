@@ -8,6 +8,7 @@ import { TypingIndicator } from "@/components/chat/typing-indicator";
 import { PixelCat, PixelWhale, PixelStar, WalkingCat } from "@/components/chat/pixel-art";
 import { supabase } from "@/lib/supabase";
 import { createThread, loadMessages, sendMessage, getSettings } from "@/lib/chat";
+import { BACKEND_URL } from "@/lib/config";
 
 interface Message {
   id?: string;
@@ -73,7 +74,7 @@ export default function ChatPage() {
       if (session.access_token) {
         try {
           const res = await fetch(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/credits/balance`,
+            `${BACKEND_URL}/api/credits/balance`,
             { headers: { Authorization: `Bearer ${session.access_token}` } }
           );
           const data = await res.json();
@@ -185,7 +186,7 @@ export default function ChatPage() {
           if (session?.access_token) {
             try {
               const res = await fetch(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/credits/balance`,
+                `${BACKEND_URL}/api/credits/balance`,
                 { headers: { Authorization: `Bearer ${session.access_token}` } }
               );
               const data = await res.json();

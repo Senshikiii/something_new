@@ -88,8 +88,12 @@ async def send_message(
 ):
     supabase = get_supabase()
 
-    profile = supabase.table("profiles").select("credits").eq("id", current_user).single().execute()
-    if not profile.data or profile.data["credits"] < 1:
+    # Atomic deduct-before-run: serializes concurrent requests per user
+    # via advisory lock, preventing double-spend race conditions.
+    # Why: the old check-then-deduct flow had a window where two concurrent
+    # requests could both pass the credit check before either deducted.
+    deduct = supabase.rpc("deduct_credit_if_available", {"p_user_id": current_user}).execute()
+    if not deduct.data:
         raise HTTPException(status_code=402, detail="Insufficient credits.")
 
     supabase.table("messages").insert({
@@ -153,7 +157,8 @@ async def send_message(
 
                 yield f"event: {event['type']}\ndata: {json.dumps(event)}\n\n"
 
-            supabase.rpc("use_credit", {"p_user_id": current_user}).execute()
+            # Credit already deducted before agent run (deduct_credit_if_available).
+            # No deduction here — prevents double-spend.
             yield "event: done\ndata: {}\n\n"
         except Exception as e:
             yield f"event: error\ndata: {json.dumps({'text': str(e)})}\n\n"
@@ -169,7 +174,10 @@ async def send_message(
 
 
 @router.get("/pdf/{pdf_id}")
-async def download_pdf(pdf_id: str):
+async def download_pdf(pdf_id: str, current_user: str = Depends(get_current_user)):
+    # Why: PDF endpoint previously had no auth — anyone with a UUID could
+    # download any generated report. Added get_current_user to match the
+    # security model of all other endpoints.
     pdf_path = PDF_DIR / f"{pdf_id}.pdf"
     if not pdf_path.exists():
         raise HTTPException(status_code=404, detail="PDF not found")

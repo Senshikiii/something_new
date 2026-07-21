@@ -1,6 +1,5 @@
 import { supabase } from "./supabase";
-
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+import { BACKEND_URL } from "./config";
 
 async function authHeaders(): Promise<Record<string, string>> {
   const {
@@ -34,7 +33,7 @@ export function saveSettings(apiKey: string, baseUrl: string, model: string) {
 
 export async function createThread(): Promise<any> {
   const headers = await authHeaders();
-  const res = await fetch(`${BACKEND}/api/chat/threads`, {
+  const res = await fetch(`${BACKEND_URL}/api/chat/threads`, {
     method: "POST",
     headers,
     body: JSON.stringify({}),
@@ -48,7 +47,7 @@ export async function createThread(): Promise<any> {
 
 export async function loadMessages(threadId: string): Promise<any[]> {
   const headers = await authHeaders();
-  const res = await fetch(`${BACKEND}/api/chat/threads/${threadId}/messages`, {
+  const res = await fetch(`${BACKEND_URL}/api/chat/threads/${threadId}/messages`, {
     headers,
   });
   if (!res.ok) {
@@ -66,7 +65,7 @@ export async function sendMessage(
   onError: (err: string) => void,
 ) {
   const [settings, headers] = await Promise.all([getSettings(), authHeaders()]);
-  const res = await fetch(`${BACKEND}/api/chat/send`, {
+  const res = await fetch(`${BACKEND_URL}/api/chat/send`, {
     method: "POST",
     headers,
     body: JSON.stringify({

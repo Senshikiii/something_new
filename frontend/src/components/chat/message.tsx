@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import type { Components } from "react-markdown";
+import { BACKEND_URL } from "@/lib/config";
 
 const codeTheme = {
   ...oneDark,
@@ -17,9 +18,9 @@ const codeTheme = {
     ...oneDark['pre[class*="language-"]'],
     fontFamily: "var(--font-mono)",
     fontSize: "0.8125rem",
-    background: "#11111b",
+    background: "#282828",
     borderRadius: "6px",
-    border: "1px solid #45475a",
+    border: "1px solid #504945",
     margin: "8px 0",
   },
 };
@@ -31,7 +32,7 @@ const markdownComponents: Components = {
     const code = String(children).replace(/\n$/, "");
     if (language) {
       return (
-        <div className="not-prose my-2 overflow-hidden rounded border border-border bg-[#11111b]">
+        <div className="not-prose my-2 overflow-hidden rounded border border-border bg-[#282828]">
           <div className="flex items-center justify-between border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
             <span>{language}</span>
           </div>
@@ -48,7 +49,7 @@ const markdownComponents: Components = {
     }
     return (
       <code
-        className="rounded bg-muted px-1.5 py-0.5 text-sm text-rose-400"
+        className="rounded bg-muted px-1.5 py-0.5 text-sm text-[#d3869b]"
         {...props}
       >
         {children}
@@ -96,8 +97,6 @@ const markdownComponents: Components = {
   },
 };
 
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
-
 interface MessageProps {
   role: "user" | "assistant" | "tool";
   content: string;
@@ -120,13 +119,13 @@ export function TerminalMessage({ role, content, tool_calls, isStreaming }: Mess
     }
   } catch {}
 
-  const prefixColor = isUser ? "text-green" : "text-primary";
+  const prefixColor = isUser ? "text-[#b8bb26]" : "text-primary";
 
   if (role === "tool" || (tool_calls && tool_calls.length > 0)) {
     return (
       <div className="animate-slide-up flex gap-3 ml-2">
         <div className="flex flex-col items-center gap-1 pt-0.5">
-          <span className="text-yellow text-xs">◆</span>
+          <span className="text-[#d79921] text-xs">◆</span>
           <div className="w-px flex-1 bg-border/50" />
         </div>
         <div className="flex-1 min-w-0 space-y-1">
@@ -142,7 +141,7 @@ export function TerminalMessage({ role, content, tool_calls, isStreaming }: Mess
             return (
               <div key={i} className="rounded border border-border/60 bg-muted/30 px-3 py-2">
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="text-yellow font-medium">{toolName}</span>
+                  <span className="text-[#d79921] font-medium">{toolName}</span>
                   {toolName === "generate_pdf" && argsStr ? (
                     <span className="text-muted-foreground truncate">Generate PDF report</span>
                   ) : (
@@ -152,7 +151,7 @@ export function TerminalMessage({ role, content, tool_calls, isStreaming }: Mess
                 {content && isPdfResult && (
                   <div className="mt-2">
                     <a
-                      href={`${BACKEND}/api/chat/pdf/${pdfId}`}
+                      href={`${BACKEND_URL}/api/chat/pdf/${pdfId}`}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-1.5 rounded border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs text-primary hover:bg-primary/20 transition-colors"
@@ -181,7 +180,7 @@ export function TerminalMessage({ role, content, tool_calls, isStreaming }: Mess
     <div className="animate-slide-up flex gap-3">
       <div
         className="w-0.5 shrink-0 rounded-full"
-        style={{ backgroundColor: isUser ? "rgba(166, 227, 161, 0.5)" : "rgba(180, 190, 254, 0.5)" }}
+        style={{ backgroundColor: isUser ? "rgba(184, 187, 38, 0.5)" : "rgba(131, 165, 152, 0.5)" }}
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
@@ -191,8 +190,8 @@ export function TerminalMessage({ role, content, tool_calls, isStreaming }: Mess
         <div
           className="rounded-lg px-3 py-2 border"
           style={{
-            backgroundColor: isUser ? "rgba(166, 227, 161, 0.04)" : "rgba(180, 190, 254, 0.04)",
-            borderColor: isUser ? "rgba(166, 227, 161, 0.1)" : "rgba(180, 190, 254, 0.1)",
+            backgroundColor: isUser ? "rgba(184, 187, 38, 0.04)" : "rgba(131, 165, 152, 0.04)",
+            borderColor: isUser ? "rgba(184, 187, 38, 0.1)" : "rgba(131, 165, 152, 0.1)",
           }}
         >
           <div className="message-content text-sm leading-relaxed text-foreground">

@@ -1,0 +1,10 @@
+.opencode/
+node_modules/
+.next/
+.env
+.env.local
+*.pyc
+__pycache__/
+.venv/
+backend/pdfs/
+.DS_Store

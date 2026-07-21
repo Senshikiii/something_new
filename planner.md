@@ -69,6 +69,17 @@ OpenCode wrote.
 - [ ] Signup URL sent to Siddarth via email
 - [ ] Stretch goal: fully working Stripe card-add-and-approve flow (the "great outcome" bar)
 
+## Deployment Status (2026-07-21)
+- Backend: Render (Docker) — https://something-new-r96o.onrender.com
+- Frontend: Vercel — pending deployment
+- Dockerfile: backend/Dockerfile (Python 3.12 + WeasyPrint system deps)
+- Race condition: FIXED — atomic deduct_credit_if_available RPC with advisory lock
+- PDF auth: FIXED — get_current_user dependency added
+- CORS: reads from CORS_ORIGINS env var (set to Vercel URL on Render)
+- Catppuccin colors: FIXED — replaced with Gruvbox equivalents
+- Toaster: FIXED — mounted in layout.tsx
+- Backend URL: consolidated into src/lib/config.ts
+
 
 
 

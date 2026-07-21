@@ -71,14 +71,46 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Atomically lock, check, and deduct one credit before agent runs.
+-- Uses advisory lock to serialize concurrent requests per user,
+-- preventing race conditions where two requests both pass the credit
+-- check before either deducts.
+CREATE OR REPLACE FUNCTION public.deduct_credit_if_available(p_user_id UUID)
+RETURNS boolean
+SET search_path = ''
+AS $$
+BEGIN
+    -- Serialize concurrent requests for the same user
+    PERFORM pg_advisory_xact_lock(('x' || md5(p_user_id::text))::bit(64)::bigint);
+
+    -- Check balance under the lock
+    IF (SELECT credits FROM public.profiles WHERE id = p_user_id) < 1 THEN
+        RETURN false;
+    END IF;
+
+    -- Deduct (atomic UPDATE WHERE credits > 0)
+    UPDATE public.profiles SET credits = credits - 1 WHERE id = p_user_id AND credits > 0;
+
+    IF NOT FOUND THEN
+        RETURN false;
+    END IF;
+
+    INSERT INTO public.credits_transactions (user_id, amount, reason)
+    VALUES (p_user_id, -1, 'chat_message');
+    RETURN true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Block direct calls from anon/authenticated (frontend users)
 REVOKE EXECUTE ON FUNCTION public.add_credits FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.use_credit FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.deduct_credit_if_available FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.handle_new_user FROM PUBLIC, anon, authenticated;
 
 -- Allow calls via the service_role key (our backend)
 GRANT EXECUTE ON FUNCTION public.add_credits TO service_role;
 GRANT EXECUTE ON FUNCTION public.use_credit TO service_role;
+GRANT EXECUTE ON FUNCTION public.deduct_credit_if_available TO service_role;
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE credits_transactions ENABLE ROW LEVEL SECURITY;

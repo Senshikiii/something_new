@@ -7,7 +7,7 @@ MicroManus — a deep research AI agent web app with usage-based billing. Assign
 ## Stack
 
 - **Frontend:** Next.js 16 (Vercel)
-- **Backend:** FastAPI (Railway)
+- **Backend:** FastAPI (Render, Docker)
 - **Auth/DB:** Supabase (Postgres + Auth)
 - **Payments:** Stripe test mode + coupon code `SID_DRDROID`
 - **Agent tools:** DuckDuckGo (free, no API key)
@@ -23,11 +23,11 @@ MicroManus — a deep research AI agent web app with usage-based billing. Assign
 - Error handling: malformed tool calls / tool failures fed back to model
 - PDF generation: distinct `generate_pdf` tool, not a chat reply
 - Credit system: both coupon and Stripe paths grant exactly 5 credits
-- Credit deduction: AFTER successful agent completion only
+- Credit deduction: BEFORE agent run (atomic `deduct_credit_if_available` RPC with advisory lock)
 - Auth: Supabase JWT tokens verified on every backend request via `auth.get_user()`
 - No user_id is ever trusted from request bodies — derived from JWT
 
-## State as of 2026-07-20
+## State as of 2026-07-21
 
 ### Completed
 
@@ -74,8 +74,8 @@ MicroManus — a deep research AI agent web app with usage-based billing. Assign
 ### Remaining Work
 
 **Core Bugs (Subsystem B):**
-- Race condition: credit check (router.py:79) and deduction (router.py:146) are non-atomic — user with 1 credit can run 2+ agents concurrently
-- `use_credit` return value silently discarded
+- ~~Race condition: credit check and deduction are non-atomic~~ → FIXED: atomic `deduct_credit_if_available` RPC with advisory lock
+- ~~`use_credit` return value silently discarded~~ → FIXED: removed old deduct-after-run, replaced with atomic deduct-before-run
 - `stream_llm()` in `llm.py` is defined but never used — user waits for full LLM response before any SSE events arrive
 - Tool result truncation at 2000 chars (`agent.py:98`) can cut JSON mid-string (borks PDF generation tool result)
 - `generate_pdf` in `tools.py` calls `write_pdf()` synchronously — blocks the entire FastAPI event loop
@@ -87,24 +87,24 @@ MicroManus — a deep research AI agent web app with usage-based billing. Assign
 - No model validation — user can type any string
 
 **UI Polish & Features (Subsystem E):**
-- `message.tsx` still has Catppuccin colors: code block bg `#11111b`, inline code `text-rose-400`, user/assistant border tints
-- Invalid Tailwind classes `text-green`, `text-yellow` in message.tsx
-- Sonner `<Toaster>` never mounted in layout — toasts won't render
+- ~~`message.tsx` still has Catppuccin colors~~ → FIXED: replaced with Gruvbox equivalents
+- ~~Invalid Tailwind classes `text-green`, `text-yellow`~~ → FIXED: replaced with hex colors
+- ~~Sonner `<Toaster>` never mounted~~ → FIXED: mounted in layout.tsx
 - `next-themes` dependency unused (no ThemeProvider)
 - `shadcn` in `dependencies` instead of `devDependencies`
 - No thread history sidebar (`listThreads()` function was removed)
 - No cost tracking page
 - Pay with card button disabled
 - No mobile send button (keyboard Enter only)
-- PDF download endpoint has no auth
+- ~~PDF download endpoint has no auth~~ → FIXED: added `get_current_user` dependency
 - PDF files not cleaned up / expired
 
 **Deployment (Subsystem F):**
-- CORS origins hardcoded to `http://localhost:3000` in `.env`
+- ~~CORS origins hardcoded to `http://localhost:3000` in `.env`~~ → FIXED: reads from CORS_ORIGINS env var
 - Stripe checkout URLs hardcoded to `http://localhost:3000`
-- No Dockerfile or deploy configuration
+- ~~No Dockerfile or deploy configuration~~ → FIXED: added `backend/Dockerfile` for Render
 - No `pyproject.toml` (only requirements.txt)
-- `pdfs/` directory not in `.gitignore`
+- ~~`pdfs/` directory not in `.gitignore`~~ → FIXED: added to both root and backend .gitignore
 
 **Planner Items:**
 - OAuth (GitHub/Google) — deferred

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const jetbrainsMono = JetBrains_Mono({
@@ -23,7 +24,10 @@ export default function RootLayout({
       className={`${jetbrainsMono.variable} h-full dark antialiased`}
       suppressHydrationWarning
     >
-      <body className="h-full flex flex-col">{children}</body>
+      <body className="h-full flex flex-col">
+        {children}
+        <Toaster />
+      </body>
     </html>
   );
 }
