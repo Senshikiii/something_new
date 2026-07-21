@@ -11,7 +11,7 @@ MicroManus — a deep research AI agent web app with usage-based billing. Assign
 - **Auth/DB:** Supabase (Postgres + Auth)
 - **Payments:** Stripe test mode + coupon code `SID_DRDROID`
 - **Agent tools:** DuckDuckGo (free, no API key)
-- **LLMs:** BYO API key — OpenAI, Claude, Gemini, Kimi (Moonshot)
+- **LLMs:** BYO API key — OpenAI, Gemini, Groq, Kimi (Moonshot)
 - **Font:** JetBrains Mono
 - **CSS:** Tailwind v4, tw-animate-css, shadcn/ui v4 (Base UI)
 - **Theme:** Gruvbox Dark (warm retro)
@@ -26,100 +26,102 @@ MicroManus — a deep research AI agent web app with usage-based billing. Assign
 - Credit deduction: BEFORE agent run (atomic `deduct_credit_if_available` RPC with advisory lock)
 - Auth: Supabase JWT tokens verified on every backend request via `auth.get_user()`
 - No user_id is ever trusted from request bodies — derived from JWT
+- Cost tracking: per-model pricing (industry standard rates), modal in chat toolbar
 
 ## State as of 2026-07-21
 
 ### Completed
 
-**Subsystem 1 — Auth + Paywall (partial):**
+**Subsystem 1 — Auth + Paywall:**
 - Supabase schema applied with security (SECURITY DEFINER, search_path, REVOKE/GRANT)
 - Coupon path: `SID_DRDROID` grants 5 credits (idempotent — one per user)
 - Stripe path: test-mode checkout (button is disabled in UI)
-- Credit deduction after successful agent run
-- OAuth (GitHub/Google) — DEFERRED
+- Credit deduction: BEFORE agent run (atomic `deduct_credit_if_available` RPC with advisory lock)
+- Anonymous sign-in for guest access
+- OAuth (GitHub/Google) — code complete, needs dashboard setup
 
 **Subsystem 2 — Chat + Agent Loop:**
 - Chat UI, thread management, message history
 - Agent loop with 10-iteration cap + error feedback
 - DuckDuckGo web search tool
-- SSE streaming events (content, thinking, tool_call, tool_result, error)
+- SSE streaming events (content, thinking, tool_call, tool_result, error, usage)
 - Markdown rendering + code syntax highlighting
 - Animated typing indicator with iteration counter
 - Tool results displayed inline, error events visible
+- Token usage tracking (saved to DB)
+- Groq empty response fix (retry without tools on empty content)
+- Better error messages for API failures (tool_use_failed, rate limits)
 
 **Subsystem 3 — PDF Report Generation:**
 - WeasyPrint-based HTML-to-PDF
 - `generate_pdf` tool in agent's toolset
 - PDFs stored on filesystem, served via GET `/api/chat/pdf/{pdf_id}`
 - Frontend download button
+- HTML injection prevention (all content escaped)
 
-**Subsystem A — Auth & Security (new):**
+**Subsystem 4 — Multi-Model Support (BYO Key):**
+- User inputs API key in settings dialog (stored in localStorage)
+- Presets for: Gemini 2.5 Flash, Gemini 2.5 Pro, Groq Llama 3.3 70B, OpenAI GPT-4o, OpenAI GPT-4o-mini, Kimi
+- Backend never stores keys — sent per-request, used, discarded
+- Per-model pricing for cost calculation
+
+**Subsystem 5 — Cost Tracking Dashboard:**
+- Modal in chat toolbar (not separate page)
+- Backend endpoint: GET `/api/costs/summary`
+- Per-model pricing: GPT-4o, GPT-4o-mini, Claude, Gemini, Groq, Kimi
+- Shows: thread title, model, input/output/cache tokens, computed cost
+
+**Subsystem A — Auth & Security:**
 - `backend/app/auth/deps.py`: FastAPI JWT verification via `supabase.auth.get_user()`
 - All routes use `Depends(get_current_user)` — no user_id from request bodies
 - `GET /api/credits/balance` (no path param — derives from JWT)
 - Stripe webhook: signature verification via `construct_event()` with STRIPE_WEBHOOK_SECRET
 - Coupon idempotency: checks `credits_transactions` for existing coupon grant
-- Auth tokens moved from query params to request body
 - Frontend: all `fetch()` calls send `Authorization: Bearer <token>`
 - Frontend: `supabase.ts` guards missing env vars
+- PDF HTML injection prevention (all content escaped)
 
 **UI Whimsy:**
-- `BootSequence` component: real async terminal boot screen on first visit with `[ OK ]` lines tied to actual operations (session, health check, init). Supports `minDurationMs` to prevent flash.
+- `BootSequence` component: real async terminal boot screen on first visit
 - `PixelCat`, `PixelWhale`, `PixelStar`, `WalkingCat` SVG components
-- Walking cat: pixel cat that traverses viewport bottom (CSS `walk` keyframes)
+- Walking cat: pixel cat that traverses viewport bottom
 - Floating pixel art at varied depths/speeds in background
 - Pixel cat icon in terminal title bar
 - Gruvbox Dark color scheme (warm retro: amber, teal, red earth tones)
 
+**Deployment:**
+- Backend: Render (Docker) — https://something-new-1-ywck.onrender.com
+- Frontend: Vercel — https://something-new-five.vercel.app
+- All env vars wired
+
 ### Remaining Work
 
-**Core Bugs (Subsystem B):**
-- ~~Race condition: credit check and deduction are non-atomic~~ → FIXED: atomic `deduct_credit_if_available` RPC with advisory lock
-- ~~`use_credit` return value silently discarded~~ → FIXED: removed old deduct-after-run, replaced with atomic deduct-before-run
-- `stream_llm()` in `llm.py` is defined but never used — user waits for full LLM response before any SSE events arrive
-- Tool result truncation at 2000 chars (`agent.py:98`) can cut JSON mid-string (borks PDF generation tool result)
-- `generate_pdf` in `tools.py` calls `write_pdf()` synchronously — blocks the entire FastAPI event loop
-- All Supabase `.execute()` calls are sync in async handlers — event loop blocking
+**Must Do Before Submission:**
+- [ ] Enable GitHub OAuth in Supabase Dashboard (code done, needs provider setup)
+- [ ] Enable Google OAuth in Supabase Dashboard (code done, needs provider setup)
+- [ ] Add redirect URLs to Supabase URL Configuration
+- [ ] Friend-test the full flow end-to-end
+- [ ] Commit & push latest changes
 
-**Model Support (Subsystem D):**
-- Add Gemini preview models (2.5-flash-preview, 2.5-pro-preview) as presets in settings dialog
-- Verify Kimi K3 endpoint works with OpenAI-compatible shim
-- No model validation — user can type any string
-
-**UI Polish & Features (Subsystem E):**
-- ~~`message.tsx` still has Catppuccin colors~~ → FIXED: replaced with Gruvbox equivalents
-- ~~Invalid Tailwind classes `text-green`, `text-yellow`~~ → FIXED: replaced with hex colors
-- ~~Sonner `<Toaster>` never mounted~~ → FIXED: mounted in layout.tsx
-- `next-themes` dependency unused (no ThemeProvider)
-- `shadcn` in `dependencies` instead of `devDependencies`
-- No thread history sidebar (`listThreads()` function was removed)
-- No cost tracking page
-- Pay with card button disabled
-- No mobile send button (keyboard Enter only)
-- ~~PDF download endpoint has no auth~~ → FIXED: added `get_current_user` dependency
-- PDF files not cleaned up / expired
-
-**Deployment (Subsystem F):**
-- ~~CORS origins hardcoded to `http://localhost:3000` in `.env`~~ → FIXED: reads from CORS_ORIGINS env var
-- Stripe checkout URLs hardcoded to `http://localhost:3000`
-- ~~No Dockerfile or deploy configuration~~ → FIXED: added `backend/Dockerfile` for Render
-- No `pyproject.toml` (only requirements.txt)
-- ~~`pdfs/` directory not in `.gitignore`~~ → FIXED: added to both root and backend .gitignore
-
-**Planner Items:**
-- OAuth (GitHub/Google) — deferred
-- Cost tracking dashboard (separate page)
-- Deployed URL for submission
-- Friend-testing the full flow
+**Nice to Have (Post-Submission):**
+- [ ] Thread history sidebar
+- [ ] Stripe checkout live (button disabled in UI)
+- [ ] Rate limiting on endpoints
+- [ ] Structured logging in backend
+- [ ] Fix sync Supabase calls (`.execute()` blocks event loop)
+- [ ] `stream_llm()` defined but never used (UX: user waits for full response)
+- [ ] Tool result truncation at 2000 chars can cut JSON mid-string
+- [ ] `generate_pdf` calls `write_pdf()` synchronously — blocks event loop
 
 ### Known Issues (non-blocking)
 
 - `get_supabase()` creates a new client on every call — no singleton
 - No logging anywhere in the backend
-- `import copy` is at module top but `import json` was duplicated (now fixed)
 - No rate limiting on any endpoint
 - No pagination on threads/messages
 - Auth middleware uses `supabase.auth.get_user()` (HTTP call) instead of local JWT decode — slight latency per request
+- `next-themes` dependency unused (no ThemeProvider)
+- `shadcn` in `dependencies` instead of `devDependencies`
 
 ## Rules for next agent
 
@@ -128,3 +130,6 @@ MicroManus — a deep research AI agent web app with usage-based billing. Assign
 - Stripe checkout URLs are still hardcoded to localhost — fix before deploy
 - Boot sequence `minDurationMs` prop ensures the screen is visible for a minimum time (currently 3500ms on landing page)
 - Walking cat animation uses CSS `walk` and `walk-fade` keyframes in globals.css
+- OAuth code is complete but needs Supabase Dashboard configuration (GitHub/Google provider setup)
+- Cost tracking uses industry standard pricing per 1M tokens (see `backend/app/config.py`)
+- Groq Llama 3.3 70B has known issues with tool calling — agent retries without tools on empty response

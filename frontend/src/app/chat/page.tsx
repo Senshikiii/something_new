@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { SettingsDialog } from "@/components/chat/settings-dialog";
+import { CostDashboard } from "@/components/chat/cost-dashboard";
 import { TerminalMessage } from "@/components/chat/message";
 import { TypingIndicator } from "@/components/chat/typing-indicator";
 import { PixelCat, PixelWhale, PixelStar, WalkingCat } from "@/components/chat/pixel-art";
@@ -281,6 +282,7 @@ export default function ChatPage() {
             )}
           </div>
           <div className="flex items-center gap-1">
+            <CostDashboard />
             <Button variant="ghost" size="sm" onClick={handleNewChat} disabled={streaming}>
               + new
             </Button>

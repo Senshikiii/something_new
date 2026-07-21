@@ -25,7 +25,32 @@ async def call_llm(
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(url, headers=headers, json=body, timeout=120)
-        resp.raise_for_status()
+
+        if resp.status_code >= 400:
+            try:
+                error_body = resp.json()
+                error_msg = error_body.get("error", {}).get("message", resp.text)
+                error_code = error_body.get("error", {}).get("code", "")
+            except Exception:
+                error_msg = resp.text
+                error_code = ""
+
+            if error_code == "tool_use_failed":
+                raise ValueError(
+                    f"Model failed to generate a valid tool call. "
+                    f"Try rephrasing your request or using a different model. "
+                    f"Details: {error_msg}"
+                )
+            elif resp.status_code == 429:
+                raise ValueError(
+                    f"Rate limit exceeded. Please wait a moment and try again. "
+                    f"Details: {error_msg}"
+                )
+            else:
+                raise ValueError(
+                    f"LLM API error ({resp.status_code}): {error_msg}"
+                )
+
         return resp.json()
 
 

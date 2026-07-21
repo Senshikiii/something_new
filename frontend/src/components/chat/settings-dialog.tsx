@@ -26,10 +26,10 @@ const PROVIDERS = [
   { label: "Groq (Llama 3.3 70B)", baseUrl: "https://api.groq.com/openai/v1", model: "llama-3.3-70b-versatile" },
   // Why: OpenAI — paid, but most users already have a key. GPT-4o is solid.
   { label: "OpenAI (GPT-4o)", baseUrl: "https://api.openai.com/v1", model: "gpt-4o" },
-  // Why: Anthropic — paid, Claude Sonnet 4 is strong at long-form research.
-  { label: "Anthropic (Claude)", baseUrl: "https://api.anthropic.com/v1", model: "claude-sonnet-4-20250514" },
-  // Why: Kimi — Moonshot's API, cheaper than OpenAI/Anthropic but less reliable.
-  { label: "Kimi (Moonshot)", baseUrl: "https://api.moonshot.cn/v1", model: "kimi-k3" },
+  // Why: OpenAI — GPT-4o-mini is cheaper, good for testing.
+  { label: "OpenAI (GPT-4o-mini)", baseUrl: "https://api.openai.com/v1", model: "gpt-4o-mini" },
+  // Why: Kimi — Moonshot's API, OpenAI-compatible, cheaper than OpenAI/Anthropic.
+  { label: "Kimi (Moonshot)", baseUrl: "https://api.moonshot.cn/v1", model: "moonshot-v1-auto" },
 ];
 
 export function SettingsDialog() {

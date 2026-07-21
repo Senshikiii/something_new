@@ -11,12 +11,12 @@ A web app where a user signs up, unlocks access via a coupon, then chats with an
 | Layer | Choice | Why |
 |---|---|---|
 | Frontend | **Next.js 16** (App Router) | Vercel deployment, server components, built-in streaming support |
-| UI | **Tailwind v4 + shadcn/ui + Base UI** | Catppuccin-themed terminal aesthetic. shadcn provides accessible, unstyled primitives that we theme via CSS variables |
-| Backend | **FastAPI** (Python 3.14) | Async-native, automatic OpenAPI docs, Railway deployment. Handles auth, paywall, agent loop |
-| Auth + Database | **Supabase** (Postgres + Auth) | Managed Postgres with built-in auth (social OAuth), RLS for row-level security, realtime capabilities |
-| Payments | **Stripe** (test mode) | Coupon code `SID_DRDROID` bypasses payments during assignment review. Stripe checkout wired for production |
-| Agent tools | **Brave Search API** | 2,000 free queries/month. The agent uses web search as its primary tool |
-| LLMs | **BYO API key** (OpenAI-compatible) | User supplies their own key for OpenAI, Claude (Anthropic), or Kimi (Moonshot). No keys stored on the backend |
+| UI | **Tailwind v4 + shadcn/ui + Base UI** | Gruvbox Dark theme (warm retro terminal aesthetic). shadcn provides accessible, unstyled primitives that we theme via CSS variables |
+| Backend | **FastAPI** (Python 3.12) | Async-native, automatic OpenAPI docs, Render deployment. Handles auth, paywall, agent loop |
+| Auth + Database | **Supabase** (Postgres + Auth) | Managed Postgres with built-in auth, RLS for row-level security |
+| Payments | **Stripe** (test mode) | Coupon code `SID_DRDROID` bypasses payments during assignment review. Stripe checkout wired but disabled in UI |
+| Agent tools | **DuckDuckGo** (free) | No API key required. Web search as the primary agent tool |
+| LLMs | **BYO API key** (OpenAI-compatible) | User supplies their own key for OpenAI, Claude, Gemini, Groq, or Kimi. No keys stored on the backend |
 
 ---
 
@@ -28,17 +28,19 @@ A web app where a user signs up, unlocks access via a coupon, then chats with an
 /
 ├── frontend/            # Next.js 16 + Tailwind + shadcn/ui
 │   ├── src/
-│   │   ├── app/         # App Router pages
-│   │   ├── components/  # UI components (shadcn + custom)
-│   │   └── lib/         # Utilities, API client
+│   │   ├── app/         # App Router pages (landing, chat, paywall)
+│   │   ├── components/  # UI components (shadcn + custom pixel art)
+│   │   └── lib/         # Utilities, API client, Supabase config
 │   └── .env.local
 ├── backend/             # FastAPI + Supabase SDK + Stripe
 │   ├── app/
-│   │   ├── auth/        # Supabase session exchange
+│   │   ├── auth/        # JWT verification
 │   │   ├── paywall/     # Coupon redemption + Stripe checkout
 │   │   ├── credits/     # Credit balance + grant/deduct
-│   │   ├── chat/        # Threads, messages, agent loop
+│   │   ├── chat/        # Threads, messages, agent loop, PDF generation
+│   │   ├── costs/       # Cost tracking dashboard endpoint
 │   │   └── db/          # SQL schema (migration)
+│   ├── Dockerfile       # Render deployment
 │   └── .env
 ├── planner.md           # Build roadmap (checklist)
 ├── AGENTS.md            # Instructions for coding agents
@@ -49,7 +51,7 @@ A web app where a user signs up, unlocks access via a coupon, then chats with an
 
 Next.js 16 with App Router. Pages are server components by default, with client islands for interactivity. Chat uses **Server-Sent Events (SSE)** streaming — the backend pushes agent progress (thinking, tool calls, tokens) as events, and the frontend renders them in real time in a terminal-like interface.
 
-**Styling:** Catppuccin Mocha (dark default) / Latte (light) via CSS custom properties. Monospace font throughout (JetBrains Mono). The UI mimics a terminal: `$`-prefixed input, flat scrolling message log with no chat bubbles, blinking cursor.
+**Styling:** Gruvbox Dark (warm retro: amber, teal, red earth tones) via CSS custom properties. Monospace font throughout (JetBrains Mono). The UI mimics a terminal: `$`-prefixed input, flat scrolling message log with no chat bubbles, blinking cursor.
 
 ### Backend
 
@@ -85,14 +87,14 @@ FastAPI with async routes. No ORM — Supabase Python SDK talks directly to Post
       └──> [FastAPI Backend] ─── service_role key ───> [Postgres bypasses RLS]
                │
                └──> [LLM API] (user's key)
-               └──> [Brave Search API] (backend's key)
+               └──> [DuckDuckGo] (free, no key)
 ```
 
 - The frontend uses the Supabase **anon key** (publishable key) for auth and direct DB reads via RLS
 - All sensitive operations (credits, agent loop) go through the **FastAPI backend**
 - The backend uses the Supabase **service_role key** (secret key) to bypass RLS for admin operations
 - User LLM API keys are **never stored on the backend** — they're sent from the frontend with each request and used only for that request's LLM calls
-- The Brave Search API key **is stored on the backend** (it's the backend's own tool credential)
+- DuckDuckGo web search requires **no API key** — it's free and unlimited
 
 ---
 
@@ -207,7 +209,7 @@ Users bring their own LLM API keys. The architecture handles this:
 1. **From the UI:** A settings dialog lets users enter their API endpoint, key, and model name
 2. **Storage:** Keys are stored in the browser's `localStorage` — never sent to our backend for storage
 3. **Per-request:** Each chat request includes the key + endpoint in the request headers. The backend reads them, makes the LLM call, and discards them. No keys are logged or persisted.
-4. **Supported providers:** Any OpenAI-compatible endpoint works. The UI provides presets for OpenAI, Claude (Anthropic's OpenAI-compatible endpoint), and Kimi (Moonshot).
+4. **Supported providers:** Any OpenAI-compatible endpoint works. The UI provides presets for OpenAI, Claude, Gemini, Groq, and Kimi (Moonshot).
 
 ---
 
@@ -217,9 +219,8 @@ Users bring their own LLM API keys. The architecture handles this:
 - Two paths to get credits:
   1. **Coupon:** Enter `SID_DRDROID` → instantly grants **5 credits**
   2. **Stripe:** Pay $5.00 via test-mode checkout → also grants **5 credits**
-- Each chat message costs **1 credit** (deducted after the agent completes its response)
-- Credits are stored in Postgres and managed atomically via the `use_credit()` function
-- The cost tracking dashboard (Subsystem 5) will show per-chat cost breakdown
+- Each chat message costs **1 credit** (deducted atomically before the agent runs via `deduct_credit_if_available` RPC with advisory lock)
+- The cost tracking dashboard shows per-conversation cost breakdown by model and token type
 
 ---
 
@@ -229,7 +230,7 @@ Users bring their own LLM API keys. The architecture handles this:
 - Node.js 20+, pnpm
 - Python 3.12+
 - Supabase project (free tier)
-- Brave Search API key (free)
+- DuckDuckGo (no API key needed)
 
 ### 1. Environment
 
@@ -262,9 +263,9 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload   # → localhost:8000
 ```
 
-### 5. Brave Search API
+### 5. Web Search
 
-Sign up at https://brave.com/search/api/ and add the key to `backend/.env` as `BRAVE_API_KEY`.
+DuckDuckGo search is built-in and free — no API key required. The `web_search` tool is available to the agent by default.
 
 ---
 
@@ -272,8 +273,10 @@ Sign up at https://brave.com/search/api/ and add the key to `backend/.env` as `B
 
 See `planner.md` for the full checklist. Current progress:
 
-- **Subsystem 1 (Auth + Paywall):** Code-complete. Schema applied. OAuth credentials pending.
-- **Subsystem 2 (Chat + Agent Loop):** In progress.
-- **Subsystem 3 (PDF Generation):** Not started.
-- **Subsystem 4 (Multi-Model):** Not started.
-- **Subsystem 5 (Cost Dashboard):** Not started.
+- **Subsystem 1 (Auth + Paywall):** Complete. Schema applied. Coupon + Stripe paths working. OAuth deferred.
+- **Subsystem 2 (Chat + Agent Loop):** Complete. Hand-built agent loop, DuckDuckGo search, SSE streaming, markdown rendering.
+- **Subsystem 3 (PDF Generation):** Complete. WeasyPrint-based HTML-to-PDF with security hardening.
+- **Subsystem 4 (Multi-Model):** Complete. BYO API key with presets for 6 providers (OpenAI, Claude, Gemini, Groq, Kimi).
+- **Subsystem 5 (Cost Dashboard):** Complete. Per-conversation cost breakdown by model and token type.
+- **Subsystem A (Auth & Security):** Complete. JWT verification, atomic credit deduction, no user_id from request bodies.
+- **Deployment:** Complete. Frontend on Vercel, backend on Render (Docker). All env vars wired.

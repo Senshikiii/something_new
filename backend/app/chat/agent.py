@@ -35,11 +35,31 @@ async def run_agent(
             stream=False,
         )
 
-        choice = response["choices"][0]
-        message = choice["message"]
+        choices = response.get("choices", [])
+        if not choices:
+            yield {"type": "content", "text": "Error: Model returned no choices. Please try again."}
+            return
+
+        message = choices[0].get("message", {})
 
         if not message.get("tool_calls"):
             content = message.get("content") or ""
+
+            if not content.strip() and iteration == 1:
+                yield {"type": "thinking", "text": "Model returned empty response, retrying without tools..."}
+                response = await call_llm(
+                    base_url=base_url,
+                    api_key=api_key,
+                    model=model,
+                    messages=messages,
+                    tools=None,
+                    stream=False,
+                )
+                choices = response.get("choices", [])
+                if choices:
+                    message = choices[0].get("message", {})
+                    content = message.get("content") or ""
+
             usage = response.get("usage", {})
             yield {
                 "type": "save_msg",

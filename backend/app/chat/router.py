@@ -152,6 +152,14 @@ async def send_message(
                         row["tool_calls"] = copy.deepcopy(event["tool_calls"])
                     if event["role"] == "tool" and "tool_call_id" in event:
                         row["tool_call_id"] = event["tool_call_id"]
+                    if "tokens_input" in event:
+                        row["tokens_input"] = event["tokens_input"]
+                    if "tokens_output" in event:
+                        row["tokens_output"] = event["tokens_output"]
+                    if "tokens_cache" in event:
+                        row["tokens_cache"] = event["tokens_cache"]
+                    if "model" in event:
+                        row["model"] = event["model"]
                     supabase.table("messages").insert(row).execute()
                     continue
 

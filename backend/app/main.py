@@ -7,6 +7,7 @@ from app.paywall.router import router as paywall_router
 from app.paywall.stripe import router as stripe_router
 from app.credits.router import router as credits_router
 from app.chat.router import router as chat_router
+from app.costs.router import router as costs_router
 
 app = FastAPI(title="MicroManus", version="0.1.0")
 
@@ -23,6 +24,7 @@ app.include_router(paywall_router)
 app.include_router(stripe_router)
 app.include_router(credits_router)
 app.include_router(chat_router)
+app.include_router(costs_router)
 
 
 @app.get("/api/health")
