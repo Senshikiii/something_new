@@ -16,9 +16,19 @@ import {
 import { getSettings, saveSettings } from "@/lib/chat";
 
 const PROVIDERS = [
-  { label: "OpenAI", baseUrl: "https://api.openai.com/v1", model: "gpt-4o" },
-  { label: "Google (Gemini)", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/", model: "gemini-2.0-flash" },
+  // Why: Gemini 2.5 Flash — free tier (no credit card), 30 RPM, fast, good at tool calling.
+  // Best default for demo/testing. Endpoint is OpenAI-compatible.
+  { label: "Gemini 2.5 Flash", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/", model: "gemini-2.5-flash" },
+  // Why: Gemini 2.5 Pro — free tier, best reasoning, lower rate limits than Flash.
+  { label: "Gemini 2.5 Pro", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai/", model: "gemini-2.5-pro" },
+  // Why: Groq — free tier, ultra-fast inference (~2600 tok/s), Llama 3.3 70B.
+  // OpenAI-compatible endpoint. Great fallback if Gemini is slow.
+  { label: "Groq (Llama 3.3 70B)", baseUrl: "https://api.groq.com/openai/v1", model: "llama-3.3-70b-versatile" },
+  // Why: OpenAI — paid, but most users already have a key. GPT-4o is solid.
+  { label: "OpenAI (GPT-4o)", baseUrl: "https://api.openai.com/v1", model: "gpt-4o" },
+  // Why: Anthropic — paid, Claude Sonnet 4 is strong at long-form research.
   { label: "Anthropic (Claude)", baseUrl: "https://api.anthropic.com/v1", model: "claude-sonnet-4-20250514" },
+  // Why: Kimi — Moonshot's API, cheaper than OpenAI/Anthropic but less reliable.
   { label: "Kimi (Moonshot)", baseUrl: "https://api.moonshot.cn/v1", model: "kimi-k3" },
 ];
 
