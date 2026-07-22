@@ -57,7 +57,9 @@ export default function ChatPage() {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session?.user?.id) {
         window.location.href = "/";
         return;
@@ -85,10 +87,9 @@ export default function ChatPage() {
       }
       if (session.access_token) {
         try {
-          const res = await fetch(
-            `${BACKEND_URL}/api/credits/balance`,
-            { headers: { Authorization: `Bearer ${session.access_token}` } }
-          );
+          const res = await fetch(`${BACKEND_URL}/api/credits/balance`, {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
           const data = await res.json();
           setCreditBalance(data.credits ?? 0);
         } catch {}
@@ -211,13 +212,14 @@ export default function ChatPage() {
         setThinkingIteration(undefined);
         streamMsgRef.current = null;
         (async () => {
-          const { data: { session } } = await supabase.auth.getSession();
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
           if (session?.access_token) {
             try {
-              const res = await fetch(
-                `${BACKEND_URL}/api/credits/balance`,
-                { headers: { Authorization: `Bearer ${session.access_token}` } }
-              );
+              const res = await fetch(`${BACKEND_URL}/api/credits/balance`, {
+                headers: { Authorization: `Bearer ${session.access_token}` },
+              });
               const data = await res.json();
               setCreditBalance(data.credits ?? 0);
             } catch {}
@@ -243,8 +245,8 @@ export default function ChatPage() {
 
   if (initializing) {
     return (
-      <div className="flex flex-1 items-center justify-center bg-bg-base">
-        <div className="text-xs text-text-faint animate-pulse">Loading...</div>
+      <div className="flex flex-1 items-center justify-center bg-white">
+        <div className="text-xs text-gray-300 animate-pulse">Loading...</div>
       </div>
     );
   }
@@ -252,7 +254,7 @@ export default function ChatPage() {
   const friendlyModel = MODEL_LABELS[modelName] || modelName;
 
   return (
-    <div className="flex flex-1 h-screen">
+    <div className="flex flex-1 h-screen bg-white">
       <Sidebar
         activeThreadId={threadId}
         onSelectThread={handleSelectThread}
@@ -262,47 +264,60 @@ export default function ChatPage() {
 
       <div className="flex-1 flex flex-col h-full">
         {/* Top bar */}
-        <div className="flex items-center justify-between h-12 px-4 border-b border-border-subtle bg-bg-surface-1 select-none shrink-0">
+        <div className="flex items-center justify-between h-14 px-4 border-b border-[#eaeaea] bg-white select-none shrink-0">
           <div className="flex items-center gap-3">
-            <Link href="/" className="text-sm font-semibold text-text-primary hover:text-accent-primary transition-colors">
+            <Link
+              href="/"
+              className="text-sm font-semibold text-black tracking-tight hover:text-gray-600 transition-colors"
+            >
               MicroManus
             </Link>
             {threadId && (
-              <span className="text-xs text-text-faint font-mono">
+              <span className="text-xs text-gray-300 font-mono">
                 #{threadId.slice(0, 6)}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-accent-success font-medium">{creditBalance}c</span>
+          <div className="flex items-center gap-1.5 text-xs">
+            <span className="text-black font-medium px-2 py-1 bg-[#fafafa] rounded-md border border-[#eaeaea]">
+              {creditBalance}c
+            </span>
             {friendlyModel && (
-              <>
-                <span className="text-text-faint">&middot;</span>
-                <span className="text-text-muted">{friendlyModel}</span>
-              </>
+              <span className="text-gray-400 px-2 py-1 hidden sm:inline">{friendlyModel}</span>
             )}
             <CostDashboard />
-            <Button variant="ghost" size="sm" onClick={handleNewChat} disabled={streaming} className="text-xs text-text-muted hover:text-text-primary transition-colors">
-              + New
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleNewChat}
+              disabled={streaming}
+              className="text-xs text-gray-400 hover:text-black hover:bg-[#fafafa] transition-colors"
+            >
+              New
             </Button>
             <SettingsDialog />
-            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-xs text-text-muted hover:text-accent-danger transition-colors">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="text-xs text-gray-400 hover:text-[#ee0000] hover:bg-[#fafafa] transition-colors"
+            >
               Logout
             </Button>
           </div>
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-bg-base">
-          <div className="mx-auto max-w-3xl px-4 py-6 space-y-4">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-white">
+          <div className="mx-auto max-w-3xl px-6 py-8 space-y-4">
             {messages.length === 0 && !streaming && (
-              <div className="animate-fade-in flex flex-col items-center justify-center py-24 text-center">
-                <h2 className="text-2xl font-bold tracking-tight mb-2">
-                  <span className="bg-gradient-to-r from-accent-primary to-purple-400 bg-clip-text text-transparent">
-                    MicroManus
-                  </span>
+              <div className="animate-fade-in flex flex-col items-center justify-center py-32 text-center">
+                <h2 className="text-4xl font-bold tracking-[-0.04em] text-black mb-3">
+                  MicroManus
                 </h2>
-                <p className="text-sm text-text-muted">Research agent ready. Set your API key in settings, then ask anything.</p>
+                <p className="text-sm text-gray-400">
+                  Research agent ready. Set your API key in settings, then ask anything.
+                </p>
               </div>
             )}
 
@@ -319,16 +334,17 @@ export default function ChatPage() {
               );
             })}
 
-            {streaming && !messages.some(m => m.role === "assistant" && !m.tool_calls) && (
-              <TypingIndicator iteration={thinkingIteration} />
-            )}
+            {streaming &&
+              !messages.some((m) => m.role === "assistant" && !m.tool_calls) && (
+                <TypingIndicator iteration={thinkingIteration} />
+              )}
           </div>
         </div>
 
         {/* Input */}
-        <div className="border-t border-border-subtle bg-bg-surface-1">
-          <div className="mx-auto max-w-3xl px-4 py-3">
-            <div className="flex items-end gap-3 bg-bg-surface-2 border border-border-subtle rounded-xl px-4 py-3 transition-all duration-200 focus-within:border-accent-primary/40 focus-within:ring-1 focus-within:ring-accent-primary/20">
+        <div className="border-t border-[#eaeaea] bg-white">
+          <div className="mx-auto max-w-3xl px-6 py-4">
+            <div className="flex items-end gap-3 bg-white border border-[#eaeaea] rounded-xl px-4 py-3 transition-all duration-200 focus-within:border-black focus-within:ring-1 focus-within:ring-black/10">
               <textarea
                 ref={inputRef}
                 value={input}
@@ -337,21 +353,29 @@ export default function ChatPage() {
                 placeholder={streaming ? "Agent is thinking..." : "Ask anything..."}
                 disabled={streaming}
                 rows={1}
-                className="flex-1 bg-transparent border-none outline-none text-sm text-text-primary placeholder:text-text-faint resize-none leading-relaxed min-h-[24px] max-h-[160px]"
+                className="flex-1 bg-transparent border-none outline-none text-sm text-black placeholder:text-gray-300 resize-none leading-relaxed min-h-[24px] max-h-[160px]"
                 autoFocus
               />
               <button
                 onClick={handleSend}
                 disabled={streaming || !input.trim()}
-                className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-accent-primary text-white hover:bg-accent-primary-hover disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150"
+                className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-black text-white hover:bg-gray-800 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed transition-all duration-150"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14m-7-7l7 7-7 7" />
                 </svg>
               </button>
             </div>
-            <div className="flex items-center justify-center mt-1.5">
-              <span className="text-[10px] text-text-faint">Enter to send &middot; Shift+Enter for newline</span>
+            <div className="flex items-center justify-center mt-2">
+              <span className="text-[10px] text-gray-300">
+                Enter to send &middot; Shift+Enter for newline
+              </span>
             </div>
           </div>
         </div>

@@ -26,10 +26,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${jetbrainsMono.variable} h-full dark antialiased`}
+      className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="h-full flex flex-col">
+      <body className="h-full flex flex-col bg-white text-black">
         {children}
         <Toaster />
       </body>

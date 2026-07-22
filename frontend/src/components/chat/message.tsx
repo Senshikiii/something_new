@@ -3,24 +3,24 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import type { Components } from "react-markdown";
 import { BACKEND_URL } from "@/lib/config";
 
 const codeTheme = {
-  ...oneDark,
+  ...oneLight,
   'code[class*="language-"]': {
-    ...oneDark['code[class*="language-"]'],
+    ...oneLight['code[class*="language-"]'],
     fontFamily: "var(--font-mono)",
     fontSize: "0.8125rem",
   },
   'pre[class*="language-"]': {
-    ...oneDark['pre[class*="language-"]'],
+    ...oneLight['pre[class*="language-"]'],
     fontFamily: "var(--font-mono)",
     fontSize: "0.8125rem",
-    background: "#111113",
+    background: "#fafafa",
     borderRadius: "6px",
-    border: "1px solid rgba(255,255,255,0.08)",
+    border: "1px solid #eaeaea",
     margin: "8px 0",
   },
 };
@@ -32,8 +32,8 @@ const markdownComponents: Components = {
     const code = String(children).replace(/\n$/, "");
     if (language) {
       return (
-        <div className="not-prose my-2 overflow-hidden rounded-lg border border-border-subtle bg-bg-surface-1">
-          <div className="flex items-center justify-between border-b border-border-subtle px-3 py-1.5 text-xs text-text-muted">
+        <div className="not-prose my-2 overflow-hidden rounded-lg border border-[#eaeaea] bg-[#fafafa]">
+          <div className="flex items-center justify-between border-b border-[#eaeaea] px-3 py-1.5 text-xs text-gray-400">
             <span>{language}</span>
           </div>
           <SyntaxHighlighter
@@ -49,7 +49,7 @@ const markdownComponents: Components = {
     }
     return (
       <code
-        className="rounded-md bg-bg-surface-3 px-1.5 py-0.5 text-sm text-accent-primary"
+        className="rounded-md bg-[#f5f5f5] px-1.5 py-0.5 text-sm text-black font-mono"
         {...props}
       >
         {children}
@@ -70,14 +70,19 @@ const markdownComponents: Components = {
   },
   a({ href, children }) {
     return (
-      <a href={href} target="_blank" rel="noreferrer" className="text-accent-primary underline underline-offset-2 hover:text-accent-primary-hover transition-colors">
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className="text-[#0070f3] underline underline-offset-2 hover:text-blue-600 transition-colors"
+      >
         {children}
       </a>
     );
   },
   blockquote({ children }) {
     return (
-      <blockquote className="border-l-2 border-accent-primary/40 pl-3 my-2 text-text-muted italic">
+      <blockquote className="border-l-2 border-gray-200 pl-3 my-2 text-gray-500 italic">
         {children}
       </blockquote>
     );
@@ -90,10 +95,10 @@ const markdownComponents: Components = {
     );
   },
   th({ children }) {
-    return <th className="border border-border-subtle bg-bg-surface-2 px-3 py-1.5 text-left font-bold text-text-primary">{children}</th>;
+    return <th className="border border-[#eaeaea] bg-[#fafafa] px-3 py-1.5 text-left font-semibold text-black">{children}</th>;
   },
   td({ children }) {
-    return <td className="border border-border-subtle px-3 py-1.5 text-text-secondary">{children}</td>;
+    return <td className="border border-[#eaeaea] px-3 py-1.5 text-gray-700">{children}</td>;
   },
 };
 
@@ -122,9 +127,9 @@ export function TerminalMessage({ role, content, tool_calls, isStreaming }: Mess
   if (role === "tool" || (tool_calls && tool_calls.length > 0)) {
     return (
       <div className="animate-slide-up flex gap-3 ml-2">
-        <div className="flex flex-col items-center gap-1 pt-0.5">
-          <span className="text-accent-primary text-xs">&#9670;</span>
-          <div className="w-px flex-1 bg-border-subtle" />
+        <div className="flex flex-col items-center gap-1 pt-1">
+          <span className="text-gray-300 text-xs">&#9670;</span>
+          <div className="w-px flex-1 bg-[#eaeaea]" />
         </div>
         <div className="flex-1 min-w-0 space-y-1">
           {(tool_calls || []).map((tc, i) => {
@@ -137,13 +142,13 @@ export function TerminalMessage({ role, content, tool_calls, isStreaming }: Mess
               argsStr = "";
             }
             return (
-              <div key={i} className="rounded-lg border border-border-subtle bg-bg-surface-2 px-3 py-2">
+              <div key={i} className="rounded-lg border border-[#eaeaea] bg-[#fafafa] px-3 py-2">
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="text-accent-primary font-medium">{toolName}</span>
+                  <span className="text-black font-semibold font-mono">{toolName}</span>
                   {toolName === "generate_pdf" && argsStr ? (
-                    <span className="text-text-muted truncate">Generate PDF report</span>
+                    <span className="text-gray-400 truncate">Generate PDF report</span>
                   ) : (
-                    argsStr && <span className="text-text-muted truncate">{argsStr}</span>
+                    argsStr && <span className="text-gray-400 truncate font-mono">{argsStr}</span>
                   )}
                 </div>
                 {content && isPdfResult && (
@@ -152,7 +157,7 @@ export function TerminalMessage({ role, content, tool_calls, isStreaming }: Mess
                       href={`${BACKEND_URL}/api/chat/pdf/${pdfId}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-accent-primary/20 bg-accent-primary-soft px-3 py-1.5 text-xs text-accent-primary hover:bg-accent-primary/20 transition-colors"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[#eaeaea] bg-white px-3 py-1.5 text-xs text-[#0070f3] hover:bg-[#fafafa] transition-colors"
                     >
                       <span>&#8595;</span>
                       <span>Download PDF — {pdfTitle}</span>
@@ -160,7 +165,7 @@ export function TerminalMessage({ role, content, tool_calls, isStreaming }: Mess
                   </div>
                 )}
                 {content && !isPdfResult && (
-                  <div className="mt-1 text-xs text-text-muted message-content [&_pre]:mt-1 [&_pre]:mb-0 [&_pre]:text-xs [&_pre]:p-2">
+                  <div className="mt-1 text-xs text-gray-500 message-content [&_pre]:mt-1 [&_pre]:mb-0 [&_pre]:text-xs [&_pre]:p-2">
                     <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                       {content}
                     </ReactMarkdown>
@@ -177,18 +182,23 @@ export function TerminalMessage({ role, content, tool_calls, isStreaming }: Mess
   return (
     <div className="animate-slide-up flex gap-3">
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 text-xs text-text-muted mb-1.5">
-          <span className="text-text-faint">{isUser ? "" : ""}</span>
-          <span>{isUser ? "You" : "Assistant"}</span>
+        <div className="flex items-center gap-2 text-xs text-gray-400 mb-1.5">
+          <span className="font-medium">{isUser ? "You" : "MicroManus"}</span>
         </div>
-        <div className="rounded-xl px-4 py-3 bg-bg-surface-2 border border-border-subtle">
-          <div className="message-content text-sm leading-relaxed text-text-primary">
+        <div
+          className={`rounded-lg px-4 py-3 ${
+            isUser
+              ? "bg-[#f5f5f5] border border-[#eaeaea]"
+              : "bg-white border border-[#eaeaea]"
+          }`}
+        >
+          <div className="message-content text-sm leading-relaxed text-black">
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
               {content || (isStreaming ? "" : "")}
             </ReactMarkdown>
             {isStreaming && (
               <span className="inline-flex ml-0.5">
-                <span className="w-2 h-4 bg-accent-primary animate-pulse rounded-sm" />
+                <span className="w-1.5 h-4 bg-black animate-pulse rounded-sm" />
               </span>
             )}
           </div>

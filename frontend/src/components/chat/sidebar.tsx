@@ -46,10 +46,10 @@ export function Sidebar({ activeThreadId, onSelectThread, onNewChat, refreshTrig
 
   if (collapsed) {
     return (
-      <div className="flex flex-col border-r border-border-subtle bg-bg-surface-1 w-12 shrink-0 select-none transition-all duration-200">
+      <div className="flex flex-col border-r border-[#eaeaea] bg-white w-14 shrink-0 select-none transition-all duration-200">
         <button
           onClick={() => setCollapsed(false)}
-          className="flex items-center justify-center h-12 border-b border-border-subtle text-text-muted hover:text-text-primary transition-colors duration-150"
+          className="flex items-center justify-center h-14 border-b border-[#eaeaea] text-gray-400 hover:text-black transition-colors duration-150"
           title="Expand sidebar"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -59,7 +59,7 @@ export function Sidebar({ activeThreadId, onSelectThread, onNewChat, refreshTrig
         <div className="flex flex-col items-center gap-1 pt-3">
           <button
             onClick={onNewChat}
-            className="w-8 h-8 flex items-center justify-center text-text-muted hover:text-accent-primary hover:bg-bg-surface-2 rounded-lg transition-all duration-150"
+            className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-black hover:bg-[#fafafa] rounded-lg transition-all duration-150"
             title="New chat"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -70,10 +70,10 @@ export function Sidebar({ activeThreadId, onSelectThread, onNewChat, refreshTrig
             <button
               key={t.id}
               onClick={() => onSelectThread(t.id)}
-              className={`w-8 h-8 flex items-center justify-center text-xs rounded-lg transition-all duration-150 ${
+              className={`w-9 h-9 flex items-center justify-center text-xs rounded-lg transition-all duration-150 ${
                 t.id === activeThreadId
-                  ? "bg-accent-primary/20 text-accent-primary"
-                  : "text-text-faint hover:text-text-muted hover:bg-bg-surface-2"
+                  ? "bg-black text-white"
+                  : "text-gray-400 hover:text-gray-700 hover:bg-[#fafafa]"
               }`}
               title={t.title || "Untitled"}
             >
@@ -86,13 +86,14 @@ export function Sidebar({ activeThreadId, onSelectThread, onNewChat, refreshTrig
   }
 
   return (
-    <div className="flex flex-col border-r border-border-subtle bg-bg-surface-1 w-64 shrink-0 select-none transition-all duration-200">
-      {/* Header */}
-      <div className="flex items-center justify-between h-12 px-3 border-b border-border-subtle">
-        <span className="text-xs font-medium text-text-muted uppercase tracking-wider">Chats</span>
+    <div className="flex flex-col border-r border-[#eaeaea] bg-white w-64 shrink-0 select-none transition-all duration-200">
+      <div className="flex items-center justify-between h-14 px-4 border-b border-[#eaeaea]">
+        <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+          Chats
+        </span>
         <button
           onClick={() => setCollapsed(true)}
-          className="text-text-muted hover:text-text-primary transition-colors duration-150"
+          className="text-gray-400 hover:text-black transition-colors duration-150"
           title="Collapse sidebar"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -101,11 +102,10 @@ export function Sidebar({ activeThreadId, onSelectThread, onNewChat, refreshTrig
         </button>
       </div>
 
-      {/* New chat button */}
-      <div className="p-2">
+      <div className="p-3">
         <button
           onClick={onNewChat}
-          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-surface-2 border border-border-subtle rounded-lg transition-all duration-150"
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-black hover:bg-[#fafafa] border border-[#eaeaea] rounded-lg transition-all duration-150"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -114,16 +114,15 @@ export function Sidebar({ activeThreadId, onSelectThread, onNewChat, refreshTrig
         </button>
       </div>
 
-      {/* Thread list */}
       <div className="flex-1 overflow-y-auto px-2">
         {loading && (
           <div className="px-3 py-6 text-center">
-            <div className="text-xs text-text-faint animate-pulse">Loading threads...</div>
+            <div className="text-xs text-gray-300 animate-pulse">Loading...</div>
           </div>
         )}
         {!loading && threads.length === 0 && (
           <div className="px-3 py-6 text-center">
-            <div className="text-xs text-text-faint">No threads yet</div>
+            <div className="text-xs text-gray-300">No threads yet</div>
           </div>
         )}
         {!loading && threads.map((thread) => (
@@ -132,15 +131,15 @@ export function Sidebar({ activeThreadId, onSelectThread, onNewChat, refreshTrig
             onClick={() => onSelectThread(thread.id)}
             className={`w-full text-left px-3 py-2.5 rounded-lg mb-0.5 transition-all duration-150 ${
               thread.id === activeThreadId
-                ? "bg-bg-surface-3 text-text-primary"
-                : "text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary"
+                ? "bg-[#f5f5f5] text-black"
+                : "text-gray-500 hover:bg-[#fafafa] hover:text-black"
             }`}
           >
             <div className="flex flex-col gap-0.5 min-w-0">
-              <span className="text-sm truncate">
+              <span className="text-sm truncate font-medium">
                 {thread.title || "Untitled"}
               </span>
-              <span className="text-xs text-text-faint">
+              <span className="text-xs text-gray-300">
                 {formatTime(thread.updated_at)}
               </span>
             </div>
@@ -148,9 +147,8 @@ export function Sidebar({ activeThreadId, onSelectThread, onNewChat, refreshTrig
         ))}
       </div>
 
-      {/* Footer */}
-      <div className="px-3 py-2 border-t border-border-subtle">
-        <span className="text-xs text-text-faint">
+      <div className="px-4 py-3 border-t border-[#eaeaea]">
+        <span className="text-xs text-gray-300">
           {threads.length} thread{threads.length !== 1 ? "s" : ""}
         </span>
       </div>
