@@ -1,15 +1,25 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { SettingsDialog } from "@/components/chat/settings-dialog";
 import { CostDashboard } from "@/components/chat/cost-dashboard";
 import { TerminalMessage } from "@/components/chat/message";
 import { TypingIndicator } from "@/components/chat/typing-indicator";
-import { PixelCat, PixelWhale, PixelStar, WalkingCat } from "@/components/chat/pixel-art";
+import { Sidebar } from "@/components/chat/sidebar";
 import { supabase } from "@/lib/supabase";
 import { createThread, loadMessages, sendMessage, getSettings } from "@/lib/chat";
 import { BACKEND_URL } from "@/lib/config";
+
+const MODEL_LABELS: Record<string, string> = {
+  "gemini-2.5-flash": "Gemini 2.5 Flash",
+  "gemini-2.5-pro": "Gemini 2.5 Pro",
+  "llama-3.3-70b-versatile": "Groq Llama 3.3 70B",
+  "gpt-4o": "GPT-4o",
+  "gpt-4o-mini": "GPT-4o Mini",
+  "moonshot-v1-auto": "Kimi",
+};
 
 interface Message {
   id?: string;
@@ -34,6 +44,7 @@ export default function ChatPage() {
   const [thinkingIteration, setThinkingIteration] = useState<number | undefined>();
   const [creditBalance, setCreditBalance] = useState(0);
   const [modelName, setModelName] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const streamMsgRef = useRef<StreamMsg | null>(null);
@@ -112,11 +123,28 @@ export default function ChatPage() {
       try {
         const thread = await createThread();
         setThreadId(thread.id);
+        setRefreshTrigger((n) => n + 1);
         window.history.replaceState(null, "", `/chat?thread_id=${thread.id}`);
       } catch (e: any) {
         setMessages([{ role: "assistant", content: `Failed to create thread: ${e.message}` }]);
       }
     })();
+  }
+
+  async function handleSelectThread(tid: string) {
+    if (tid === threadId || streaming) return;
+    setMessages([]);
+    setStreaming(false);
+    setThinkingIteration(undefined);
+    streamMsgRef.current = null;
+    setThreadId(tid);
+    window.history.replaceState(null, "", `/chat?thread_id=${tid}`);
+    try {
+      const msgs = await loadMessages(tid);
+      setMessages(msgs);
+    } catch (e: any) {
+      setMessages([{ role: "assistant", content: `Failed to load messages: ${e.message}` }]);
+    }
   }
 
   async function handleSend() {
@@ -215,97 +243,66 @@ export default function ChatPage() {
 
   if (initializing) {
     return (
-      <div className="flex flex-1 items-center justify-center bg-[#1d2021]">
-        <div className="text-xs text-[#504945] animate-pulse">loading...</div>
+      <div className="flex flex-1 items-center justify-center bg-bg-base">
+        <div className="text-xs text-text-faint animate-pulse">Loading...</div>
       </div>
     );
   }
 
+  const friendlyModel = MODEL_LABELS[modelName] || modelName;
+
   return (
-    <div className="flex flex-1 flex-col items-center justify-center p-2 sm:p-3 relative">
-      {/* Background decorations */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute animate-[float-drift_8s_ease-in-out_infinite]" style={{ top: "12%", left: "5%", opacity: 0.15 }}>
-          <PixelCat color="#d79921" size={4} />
-        </div>
-        <div className="absolute animate-[float-drift-slow_12s_ease-in-out_infinite]" style={{ top: "60%", right: "6%", opacity: 0.12 }}>
-          <PixelWhale color="#458588" size={4} />
-        </div>
-        <div className="absolute animate-[float-drift_10s_ease-in-out_infinite_reverse]" style={{ top: "30%", right: "15%", opacity: 0.08 }}>
-          <PixelCat color="#98971a" size={3} />
-        </div>
-        <div className="absolute animate-[float-drift-slow_15s_ease-in-out_infinite]" style={{ bottom: "20%", left: "10%", opacity: 0.1 }}>
-          <PixelWhale color="#b16286" size={3} />
-        </div>
-        <div className="absolute animate-[float-drift_14s_ease-in-out_infinite]" style={{ top: "45%", left: "50%", opacity: 0.06 }}>
-          <PixelStar color="#d65d0e" size={3} />
-        </div>
-        <div className="absolute animate-[float-drift_9s_ease-in-out_infinite_reverse]" style={{ top: "75%", right: "25%", opacity: 0.05 }}>
-          <PixelStar color="#fabd2f" size={2} />
-        </div>
-        <WalkingCat className="fixed bottom-0 left-0 z-0" />
-      </div>
+    <div className="flex flex-1 h-screen">
+      <Sidebar
+        activeThreadId={threadId}
+        onSelectThread={handleSelectThread}
+        onNewChat={handleNewChat}
+        refreshTrigger={refreshTrigger}
+      />
 
-      <div className="w-full max-w-4xl h-full flex flex-col border-2 border-border/80 bg-background shadow-[8px_8px_0px_rgba(29,32,33,0.8)] z-10">
-        {/* Retro terminal title bar */}
-        <div className="flex items-center border-b-2 border-border/80 bg-[#3c3836] px-3 py-1.5 select-none">
-          <div className="flex items-center gap-2 text-xs text-[#928374] font-bold tracking-wide">
-            <PixelCat color="#d79921" size={2} />
-            <span>MICROMANUS</span>
-            <span className="text-[#504945]">|</span>
-            <span className="font-normal text-[#928374]">~/chat</span>
-          </div>
-          <div className="flex-1" />
-          <button
-            onClick={handleLogout}
-            className="text-[#928374] hover:text-[#cc241d] text-xs transition-colors tracking-wide"
-          >
-            [exit]
-          </button>
-        </div>
-
-        {/* Toolbar */}
-        <div className="flex items-center justify-between border-b border-border/40 px-3 py-1 bg-[#32302f]">
-          <div className="flex items-center gap-2 text-xs text-[#928374]">
-            <span className="text-[#98971a]">{creditBalance}c</span>
-            {modelName && (
-              <>
-                <span className="text-[#504945]">|</span>
-                <span className="truncate max-w-24">{modelName}</span>
-              </>
-            )}
+      <div className="flex-1 flex flex-col h-full">
+        {/* Top bar */}
+        <div className="flex items-center justify-between h-12 px-4 border-b border-border-subtle bg-bg-surface-1 select-none shrink-0">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="text-sm font-semibold text-text-primary hover:text-accent-primary transition-colors">
+              MicroManus
+            </Link>
             {threadId && (
-              <>
-                <span className="text-[#504945]">|</span>
-                <span className="text-[#504945]">#{threadId.slice(0, 6)}</span>
-              </>
+              <span className="text-xs text-text-faint font-mono">
+                #{threadId.slice(0, 6)}
+              </span>
             )}
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-accent-success font-medium">{creditBalance}c</span>
+            {friendlyModel && (
+              <>
+                <span className="text-text-faint">&middot;</span>
+                <span className="text-text-muted">{friendlyModel}</span>
+              </>
+            )}
             <CostDashboard />
-            <Button variant="ghost" size="sm" onClick={handleNewChat} disabled={streaming}>
-              + new
+            <Button variant="ghost" size="sm" onClick={handleNewChat} disabled={streaming} className="text-xs text-text-muted hover:text-text-primary transition-colors">
+              + New
             </Button>
             <SettingsDialog />
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-xs text-text-muted hover:text-accent-danger transition-colors">
+              Logout
+            </Button>
           </div>
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-[#1d2021]">
-          <div className="mx-auto max-w-3xl px-3 sm:px-4 py-5 space-y-3">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto bg-bg-base">
+          <div className="mx-auto max-w-3xl px-4 py-6 space-y-4">
             {messages.length === 0 && !streaming && (
-              <div className="animate-fade-in flex flex-col items-center justify-center py-20 text-center">
-                <pre className="text-xs text-[#504945] select-none mb-6 leading-relaxed">
-{`  __  __ _                _____                _
- |  \\/  (_) ___ ___ ___  |  ___|__ _ __  _   _| |_ ___
- | |\\/| | |/ __/ __/ __| | |_ / _ \\ '_ \\| | | | __/ _ \\
- | |  | | | (__|__ \\__ \\ |  _|  __/ | | | |_| | |_  __/
- |_|  |_|_|\\___|___/___/ |_|  \\___|_| |_|\\__,_|\\__\\___|`}
-                </pre>
-                <div className="space-y-1">
-                  <p className="text-xs text-[#928374]">research agent ready —</p>
-                  <p className="text-xs text-[#504945]">set API key in settings, then ask anything</p>
-                </div>
+              <div className="animate-fade-in flex flex-col items-center justify-center py-24 text-center">
+                <h2 className="text-2xl font-bold tracking-tight mb-2">
+                  <span className="bg-gradient-to-r from-accent-primary to-purple-400 bg-clip-text text-transparent">
+                    MicroManus
+                  </span>
+                </h2>
+                <p className="text-sm text-text-muted">Research agent ready. Set your API key in settings, then ask anything.</p>
               </div>
             )}
 
@@ -329,30 +326,32 @@ export default function ChatPage() {
         </div>
 
         {/* Input */}
-        <div className="border-t-2 border-border/60 bg-[#32302f]">
-          <div className="mx-auto max-w-3xl px-3 sm:px-4 py-3">
-            <div className="flex items-start gap-2 border-2 border-border bg-[#1d2021] px-3 py-2 transition-colors duration-200 focus-within:border-[#458588]">
-              <span className="text-[#98971a] shrink-0 mt-1.5 text-sm select-none">$</span>
+        <div className="border-t border-border-subtle bg-bg-surface-1">
+          <div className="mx-auto max-w-3xl px-4 py-3">
+            <div className="flex items-end gap-3 bg-bg-surface-2 border border-border-subtle rounded-xl px-4 py-3 transition-all duration-200 focus-within:border-accent-primary/40 focus-within:ring-1 focus-within:ring-accent-primary/20">
               <textarea
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={streaming ? "agent is thinking..." : "ask anything..."}
+                placeholder={streaming ? "Agent is thinking..." : "Ask anything..."}
                 disabled={streaming}
                 rows={1}
-                className="flex-1 bg-transparent border-none outline-none text-sm text-[#ebdbb2] placeholder:text-[#504945] font-mono resize-none leading-relaxed"
+                className="flex-1 bg-transparent border-none outline-none text-sm text-text-primary placeholder:text-text-faint resize-none leading-relaxed min-h-[24px] max-h-[160px]"
                 autoFocus
               />
-            </div>
-            <div className="flex items-center justify-between mt-1.5 px-1">
-              <span className="text-[10px] text-[#504945]">RET to send · ^J newline</span>
               <button
-                onClick={handleLogout}
-                className="text-[10px] text-[#504945] hover:text-[#cc241d] transition-colors"
+                onClick={handleSend}
+                disabled={streaming || !input.trim()}
+                className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg bg-accent-primary text-white hover:bg-accent-primary-hover disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150"
               >
-                logout
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14m-7-7l7 7-7 7" />
+                </svg>
               </button>
+            </div>
+            <div className="flex items-center justify-center mt-1.5">
+              <span className="text-[10px] text-text-faint">Enter to send &middot; Shift+Enter for newline</span>
             </div>
           </div>
         </div>

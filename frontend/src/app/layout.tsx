@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+});
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
@@ -21,7 +26,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${jetbrainsMono.variable} h-full dark antialiased`}
+      className={`${inter.variable} ${jetbrainsMono.variable} h-full dark antialiased`}
       suppressHydrationWarning
     >
       <body className="h-full flex flex-col">

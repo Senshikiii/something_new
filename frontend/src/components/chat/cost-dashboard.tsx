@@ -39,7 +39,7 @@ export function CostDashboard() {
 
   useEffect(() => {
     if (!open) return;
-    setLoading(true);
+    queueMicrotask(() => setLoading(true));
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) return;
@@ -70,54 +70,52 @@ export function CostDashboard() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-xs text-[#928374] hover:text-[#d79921]">
-          costs
-        </Button>
+      <DialogTrigger render={<Button variant="ghost" size="sm" className="text-xs text-text-muted hover:text-text-primary transition-colors" />}>
+        Costs
       </DialogTrigger>
-      <DialogContent className="bg-[#282828] border-[#504945] text-[#ebdbb2] max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="bg-bg-surface-1 border-border-subtle text-text-primary max-w-2xl max-h-[80vh] overflow-hidden flex flex-col rounded-xl">
         <DialogHeader>
-          <DialogTitle className="text-[#d79921] font-mono text-sm">
-            usage &amp; cost breakdown
+          <DialogTitle className="text-sm font-semibold text-text-primary">
+            Usage &amp; Cost Breakdown
           </DialogTitle>
         </DialogHeader>
 
         {loading ? (
-          <div className="py-8 text-center text-[#928374] text-xs animate-pulse">loading...</div>
+          <div className="py-8 text-center text-text-muted text-xs animate-pulse">Loading...</div>
         ) : !data || data.threads.length === 0 ? (
-          <div className="py-8 text-center text-[#928374] text-xs">no usage data yet</div>
+          <div className="py-8 text-center text-text-muted text-xs">No usage data yet</div>
         ) : (
           <div className="overflow-y-auto flex-1 -mx-6 px-6">
-            <table className="w-full text-xs font-mono">
+            <table className="w-full text-xs">
               <thead>
-                <tr className="text-[#928374] border-b border-[#504945]">
-                  <th className="text-left py-2 pr-3">thread</th>
-                  <th className="text-left py-2 pr-3">model</th>
-                  <th className="text-right py-2 pr-3">in</th>
-                  <th className="text-right py-2 pr-3">out</th>
-                  <th className="text-right py-2 pr-3">cache</th>
-                  <th className="text-right py-2">cost</th>
+                <tr className="text-text-muted border-b border-border-subtle">
+                  <th className="text-left py-2 pr-3 font-medium">Thread</th>
+                  <th className="text-left py-2 pr-3 font-medium">Model</th>
+                  <th className="text-right py-2 pr-3 font-medium">In</th>
+                  <th className="text-right py-2 pr-3 font-medium">Out</th>
+                  <th className="text-right py-2 pr-3 font-medium">Cache</th>
+                  <th className="text-right py-2 font-medium">Cost</th>
                 </tr>
               </thead>
               <tbody>
                 {data.threads.map((t) => (
-                  <tr key={t.thread_id} className="border-b border-[#3c3836] hover:bg-[#32302f]">
-                    <td className="py-1.5 pr-3 truncate max-w-[140px] text-[#ebdbb2]">{t.title}</td>
-                    <td className="py-1.5 pr-3 text-[#928374] truncate max-w-[120px]">{t.model}</td>
-                    <td className="py-1.5 pr-3 text-right text-[#b8bb26]">{fmtTokens(t.tokens_input)}</td>
-                    <td className="py-1.5 pr-3 text-right text-[#fabd2f]">{fmtTokens(t.tokens_output)}</td>
-                    <td className="py-1.5 pr-3 text-right text-[#83a598]">{fmtTokens(t.tokens_cache)}</td>
-                    <td className="py-1.5 text-right text-[#d79921]">{fmtCost(t.cost)}</td>
+                  <tr key={t.thread_id} className="border-b border-border-subtle hover:bg-bg-surface-2 transition-colors">
+                    <td className="py-1.5 pr-3 truncate max-w-[140px] text-text-primary">{t.title}</td>
+                    <td className="py-1.5 pr-3 text-text-muted truncate max-w-[120px]">{t.model}</td>
+                    <td className="py-1.5 pr-3 text-right text-accent-success">{fmtTokens(t.tokens_input)}</td>
+                    <td className="py-1.5 pr-3 text-right text-accent-warning">{fmtTokens(t.tokens_output)}</td>
+                    <td className="py-1.5 pr-3 text-right text-accent-primary">{fmtTokens(t.tokens_cache)}</td>
+                    <td className="py-1.5 text-right text-text-secondary font-medium">{fmtCost(t.cost)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t-2 border-[#504945] font-bold">
-                  <td colSpan={2} className="py-2 pr-3 text-[#928374]">total</td>
-                  <td className="py-2 pr-3 text-right text-[#b8bb26]">{fmtTokens(data.totals.tokens_input)}</td>
-                  <td className="py-2 pr-3 text-right text-[#fabd2f]">{fmtTokens(data.totals.tokens_output)}</td>
-                  <td className="py-2 pr-3 text-right text-[#83a598]">{fmtTokens(data.totals.tokens_cache)}</td>
-                  <td className="py-2 text-right text-[#d79921]">{fmtCost(data.totals.cost)}</td>
+                <tr className="border-t border-border-strong font-semibold">
+                  <td colSpan={2} className="py-2 pr-3 text-text-muted">Total</td>
+                  <td className="py-2 pr-3 text-right text-accent-success">{fmtTokens(data.totals.tokens_input)}</td>
+                  <td className="py-2 pr-3 text-right text-accent-warning">{fmtTokens(data.totals.tokens_output)}</td>
+                  <td className="py-2 pr-3 text-right text-accent-primary">{fmtTokens(data.totals.tokens_cache)}</td>
+                  <td className="py-2 text-right text-text-primary">{fmtCost(data.totals.cost)}</td>
                 </tr>
               </tfoot>
             </table>

@@ -31,6 +31,23 @@ export function saveSettings(apiKey: string, baseUrl: string, model: string) {
   localStorage.setItem("micromanus_model", model);
 }
 
+export interface Thread {
+  id: string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function listThreads(): Promise<Thread[]> {
+  const headers = await authHeaders();
+  const res = await fetch(`${BACKEND_URL}/api/chat/threads`, { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to load threads");
+  }
+  return res.json();
+}
+
 export async function createThread(): Promise<any> {
   const headers = await authHeaders();
   const res = await fetch(`${BACKEND_URL}/api/chat/threads`, {
