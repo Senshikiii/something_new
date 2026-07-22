@@ -1,4 +1,5 @@
 import json
+import asyncio
 from typing import AsyncGenerator
 
 from app.chat.llm import call_llm
@@ -26,14 +27,27 @@ async def run_agent(
 
         yield {"type": "thinking", "text": f"Iteration {iteration} — calling model..."}
 
-        response = await call_llm(
-            base_url=base_url,
-            api_key=api_key,
-            model=model,
-            messages=messages,
-            tools=TOOLS,
-            stream=False,
+        llm_task = asyncio.create_task(
+            call_llm(
+                base_url=base_url,
+                api_key=api_key,
+                model=model,
+                messages=messages,
+                tools=TOOLS,
+                stream=False,
+            )
         )
+
+        while not llm_task.done():
+            try:
+                await asyncio.wait_for(asyncio.shield(asyncio.sleep(0)), timeout=5)
+            except asyncio.TimeoutError:
+                pass
+            await asyncio.sleep(3)
+            if not llm_task.done():
+                yield {"type": "thinking", "text": f"Iteration {iteration} — still working..."}
+
+        response = llm_task.result()
 
         choices = response.get("choices", [])
         if not choices:
@@ -47,14 +61,25 @@ async def run_agent(
 
             if not content.strip() and iteration == 1:
                 yield {"type": "thinking", "text": "Model returned empty response, retrying without tools..."}
-                response = await call_llm(
-                    base_url=base_url,
-                    api_key=api_key,
-                    model=model,
-                    messages=messages,
-                    tools=None,
-                    stream=False,
+                retry_task = asyncio.create_task(
+                    call_llm(
+                        base_url=base_url,
+                        api_key=api_key,
+                        model=model,
+                        messages=messages,
+                        tools=None,
+                        stream=False,
+                    )
                 )
+                while not retry_task.done():
+                    try:
+                        await asyncio.wait_for(asyncio.shield(asyncio.sleep(0)), timeout=5)
+                    except asyncio.TimeoutError:
+                        pass
+                    await asyncio.sleep(3)
+                    if not retry_task.done():
+                        yield {"type": "thinking", "text": "Retrying without tools..."}
+                response = retry_task.result()
                 choices = response.get("choices", [])
                 if choices:
                     message = choices[0].get("message", {})

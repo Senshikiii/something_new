@@ -81,22 +81,28 @@ export async function sendMessage(
   onDone: () => void,
   onError: (err: string) => void,
 ) {
-  const [settings, headers] = await Promise.all([getSettings(), authHeaders()]);
-  const res = await fetch(`${BACKEND_URL}/api/chat/send`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      thread_id: threadId,
-      content,
-      api_key: settings.apiKey,
-      base_url: settings.baseUrl,
-      model: settings.model,
-    }),
-  });
+  let res: Response;
+  try {
+    const [settings, headers] = await Promise.all([getSettings(), authHeaders()]);
+    res = await fetch(`${BACKEND_URL}/api/chat/send`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        thread_id: threadId,
+        content,
+        api_key: settings.apiKey,
+        base_url: settings.baseUrl,
+        model: settings.model,
+      }),
+    });
+  } catch (e: any) {
+    onError(e.message || "Failed to connect to server");
+    return;
+  }
 
   if (!res.ok) {
-    const err = await res.json();
-    onError(err.detail || "Request failed");
+    const err = await res.json().catch(() => ({ detail: `Request failed (${res.status})` }));
+    onError(err.detail || `Request failed (${res.status})`);
     return;
   }
 

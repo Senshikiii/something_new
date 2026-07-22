@@ -160,80 +160,92 @@ export default function ChatPage() {
 
     streamMsgRef.current = { id: crypto.randomUUID(), role: "assistant", content: "" };
 
-    await sendMessage(
-      threadId,
-      text,
-      (event) => {
-        if (event.type === "content") {
-          streamMsgRef.current!.content += event.text;
-          setMessages((prev) => {
-            const copy = [...prev];
-            const last = copy[copy.length - 1];
-            if (last && last.role === "assistant" && last.id === streamMsgRef.current?.id) {
-              copy[copy.length - 1] = { ...last, content: streamMsgRef.current!.content };
-            } else {
-              copy.push({ ...streamMsgRef.current! });
-            }
-            return copy;
+    const refreshCredits = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/credits/balance`, {
+            headers: { Authorization: `Bearer ${session.access_token}` },
           });
-          setThinkingIteration(undefined);
-          scrollToBottom();
-        } else if (event.type === "tool_call") {
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "assistant" as const,
-              content: "",
-              tool_calls: [{ tool: event.tool, args: event.args }],
-              id: crypto.randomUUID(),
-            },
-          ]);
-          scrollToBottom();
-        } else if (event.type === "tool_result") {
-          setMessages((prev) => {
-            const copy = [...prev];
-            for (let i = copy.length - 1; i >= 0; i--) {
-              if (copy[i].role === "assistant" && copy[i].tool_calls?.length) {
-                copy[i] = { ...copy[i], content: event.text };
-                break;
-              }
-            }
-            return copy;
-          });
-        } else if (event.type === "thinking") {
-          setThinkingIteration((prev) => (prev || 1) + 1);
-        } else if (event.type === "error") {
-          streamMsgRef.current = null;
-          setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${event.text}` }]);
-        }
-      },
-      () => {
-        setStreaming(false);
-        setThinkingIteration(undefined);
-        streamMsgRef.current = null;
-        (async () => {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          if (session?.access_token) {
-            try {
-              const res = await fetch(`${BACKEND_URL}/api/credits/balance`, {
-                headers: { Authorization: `Bearer ${session.access_token}` },
-              });
-              const data = await res.json();
-              setCreditBalance(data.credits ?? 0);
-            } catch {}
-          }
-        })();
-        scrollToBottom();
-      },
-      (err) => {
-        setMessages((prev) => [...prev, { role: "assistant" as const, content: `Error: ${err}` }]);
-        setStreaming(false);
-        setThinkingIteration(undefined);
-        streamMsgRef.current = null;
+          const data = await res.json();
+          setCreditBalance(data.credits ?? 0);
+        } catch {}
       }
-    );
+    };
+
+    try {
+      await sendMessage(
+        threadId,
+        text,
+        (event) => {
+          if (event.type === "content") {
+            streamMsgRef.current!.content += event.text;
+            setMessages((prev) => {
+              const copy = [...prev];
+              const last = copy[copy.length - 1];
+              if (last && last.role === "assistant" && last.id === streamMsgRef.current?.id) {
+                copy[copy.length - 1] = { ...last, content: streamMsgRef.current!.content };
+              } else {
+                copy.push({ ...streamMsgRef.current! });
+              }
+              return copy;
+            });
+            setThinkingIteration(undefined);
+            scrollToBottom();
+          } else if (event.type === "tool_call") {
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant" as const,
+                content: "",
+                tool_calls: [{ tool: event.tool, args: event.args }],
+                id: crypto.randomUUID(),
+              },
+            ]);
+            scrollToBottom();
+          } else if (event.type === "tool_result") {
+            setMessages((prev) => {
+              const copy = [...prev];
+              for (let i = copy.length - 1; i >= 0; i--) {
+                if (copy[i].role === "assistant" && copy[i].tool_calls?.length) {
+                  copy[i] = { ...copy[i], content: event.text };
+                  break;
+                }
+              }
+              return copy;
+            });
+          } else if (event.type === "thinking") {
+            setThinkingIteration((prev) => (prev || 1) + 1);
+          } else if (event.type === "error") {
+            streamMsgRef.current = null;
+            setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${event.text}` }]);
+          }
+        },
+        () => {
+          setStreaming(false);
+          setThinkingIteration(undefined);
+          streamMsgRef.current = null;
+          refreshCredits();
+          scrollToBottom();
+        },
+        (err) => {
+          setMessages((prev) => [...prev, { role: "assistant" as const, content: `Error: ${err}` }]);
+          setStreaming(false);
+          setThinkingIteration(undefined);
+          streamMsgRef.current = null;
+        }
+      );
+    } catch (e: any) {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant" as const, content: `Error: ${e.message || "Something went wrong"}` },
+      ]);
+      setStreaming(false);
+      setThinkingIteration(undefined);
+      streamMsgRef.current = null;
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {

@@ -1,5 +1,6 @@
 import copy
 import json
+import asyncio
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse, FileResponse
@@ -37,8 +38,8 @@ class ThreadOut(BaseModel):
 @router.get("/threads")
 async def list_threads(current_user: str = Depends(get_current_user)) -> list[ThreadOut]:
     supabase = get_supabase()
-    result = (
-        supabase.table("threads")
+    result = await asyncio.to_thread(
+        lambda: supabase.table("threads")
         .select("id, title, created_at, updated_at")
         .eq("user_id", current_user)
         .order("updated_at", desc=True)
@@ -53,8 +54,8 @@ async def create_thread(
     current_user: str = Depends(get_current_user),
 ) -> ThreadOut:
     supabase = get_supabase()
-    result = (
-        supabase.table("threads")
+    result = await asyncio.to_thread(
+        lambda: supabase.table("threads")
         .insert({"user_id": current_user})
         .execute()
     )
@@ -68,11 +69,13 @@ async def list_messages(
     current_user: str = Depends(get_current_user),
 ):
     supabase = get_supabase()
-    thread = supabase.table("threads").select("user_id").eq("id", thread_id).single().execute()
+    thread = await asyncio.to_thread(
+        lambda: supabase.table("threads").select("user_id").eq("id", thread_id).single().execute()
+    )
     if not thread.data or thread.data["user_id"] != current_user:
         raise HTTPException(status_code=404, detail="Thread not found")
-    result = (
-        supabase.table("messages")
+    result = await asyncio.to_thread(
+        lambda: supabase.table("messages")
         .select("*")
         .eq("thread_id", thread_id)
         .order("created_at")
@@ -92,22 +95,32 @@ async def send_message(
     # via advisory lock, preventing double-spend race conditions.
     # Why: the old check-then-deduct flow had a window where two concurrent
     # requests could both pass the credit check before either deducted.
-    deduct = supabase.rpc("deduct_credit_if_available", {"p_user_id": current_user}).execute()
+    deduct = await asyncio.to_thread(
+        lambda: supabase.rpc("deduct_credit_if_available", {"p_user_id": current_user}).execute()
+    )
     if not deduct.data:
         raise HTTPException(status_code=402, detail="Insufficient credits.")
 
-    supabase.table("messages").insert({
-        "thread_id": body.thread_id,
-        "role": "user",
-        "content": body.content,
-    }).execute()
+    await asyncio.to_thread(
+        lambda: supabase.table("messages").insert({
+            "thread_id": body.thread_id,
+            "role": "user",
+            "content": body.content,
+        }).execute()
+    )
 
-    existing = supabase.table("messages").select("id").eq("thread_id", body.thread_id).execute()
+    existing = await asyncio.to_thread(
+        lambda: supabase.table("messages").select("id").eq("thread_id", body.thread_id).execute()
+    )
     if len(existing.data) == 1:
         title = body.content[:80] + ("..." if len(body.content) > 80 else "")
-        supabase.table("threads").update({"title": title}).eq("id", body.thread_id).execute()
+        await asyncio.to_thread(
+            lambda: supabase.table("threads").update({"title": title}).eq("id", body.thread_id).execute()
+        )
 
-    history = supabase.table("messages").select("*").eq("thread_id", body.thread_id).order("created_at").execute()
+    history = await asyncio.to_thread(
+        lambda: supabase.table("messages").select("*").eq("thread_id", body.thread_id).order("created_at").execute()
+    )
 
     messages = []
     for msg in history.data:
@@ -160,7 +173,12 @@ async def send_message(
                         row["tokens_cache"] = event["tokens_cache"]
                     if "model" in event:
                         row["model"] = event["model"]
-                    supabase.table("messages").insert(row).execute()
+                    try:
+                        await asyncio.to_thread(
+                            lambda: supabase.table("messages").insert(row).execute()
+                        )
+                    except Exception:
+                        pass
                     continue
 
                 yield f"event: {event['type']}\ndata: {json.dumps(event)}\n\n"
