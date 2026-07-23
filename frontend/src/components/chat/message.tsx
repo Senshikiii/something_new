@@ -6,6 +6,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import type { Components } from "react-markdown";
 import { BACKEND_URL } from "@/lib/config";
+import { supabase } from "@/lib/supabase";
 
 const codeTheme = {
   ...oneLight,
@@ -153,15 +154,31 @@ export function TerminalMessage({ role, content, tool_calls, isStreaming }: Mess
                 </div>
                 {content && isPdfResult && (
                   <div className="mt-2">
-                    <a
-                      href={`${BACKEND_URL}/api/chat/pdf/${pdfId}`}
-                      target="_blank"
-                      rel="noreferrer"
+                    <button
+                      onClick={async () => {
+                        const { data: { session } } = await supabase.auth.getSession();
+                        if (!session?.access_token) return;
+                        try {
+                          const res = await fetch(`${BACKEND_URL}/api/chat/pdf/${pdfId}`, {
+                            headers: { Authorization: `Bearer ${session.access_token}` },
+                          });
+                          if (!res.ok) throw new Error("Download failed");
+                          const blob = await res.blob();
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `micromanus-report-${pdfId.slice(0, 8)}.pdf`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                        } catch {}
+                      }}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-[#eaeaea] bg-white px-3 py-1.5 text-xs text-[#0070f3] hover:bg-[#fafafa] transition-colors"
                     >
                       <span>&#8595;</span>
                       <span>Download PDF — {pdfTitle}</span>
-                    </a>
+                    </button>
                   </div>
                 )}
                 {content && !isPdfResult && (

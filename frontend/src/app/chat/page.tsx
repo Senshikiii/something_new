@@ -181,17 +181,20 @@ export default function ChatPage() {
         text,
         (event) => {
           if (event.type === "content") {
-            streamMsgRef.current!.content += event.text;
-            setMessages((prev) => {
-              const copy = [...prev];
-              const last = copy[copy.length - 1];
-              if (last && last.role === "assistant" && last.id === streamMsgRef.current?.id) {
-                copy[copy.length - 1] = { ...last, content: streamMsgRef.current!.content };
-              } else {
-                copy.push({ ...streamMsgRef.current! });
-              }
-              return copy;
-            });
+            const snapshot = streamMsgRef.current;
+            if (snapshot) {
+              snapshot.content += event.text;
+              setMessages((prev) => {
+                const copy = [...prev];
+                const last = copy[copy.length - 1];
+                if (last && last.role === "assistant" && last.id === snapshot.id) {
+                  copy[copy.length - 1] = { ...last, content: snapshot.content };
+                } else {
+                  copy.push({ ...snapshot });
+                }
+                return copy;
+              });
+            }
             setThinkingIteration(undefined);
             scrollToBottom();
           } else if (event.type === "tool_call") {
@@ -335,11 +338,18 @@ export default function ChatPage() {
 
             {messages.map((msg, i) => {
               if (msg.role === "tool") return null;
+              let content = msg.content;
+              if (msg.role === "assistant" && msg.tool_calls?.length && !content) {
+                const toolMsg = messages[i + 1];
+                if (toolMsg && toolMsg.role === "tool") {
+                  content = toolMsg.content;
+                }
+              }
               return (
                 <TerminalMessage
                   key={msg.id || i}
                   role={msg.role}
-                  content={msg.content}
+                  content={content}
                   tool_calls={msg.tool_calls}
                   isStreaming={streaming && i === messages.length - 1 && msg.role === "assistant"}
                 />
